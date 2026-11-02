@@ -80,6 +80,10 @@ export function cleanSponsorName(raw: string) {
     .replace(/\s+/g, " ").trim();
   if (/^[a-z0-9 ]+$/.test(s) && s.length > 3) s = s.replace(/\b[a-z]/g, (c) => c.toUpperCase()); // "boat nirvana" from a file name or handle
   if (s.length < 2 || s.length > 40 || /^\d+$/.test(s) || NOT_A_SPONSOR.test(s) || s.split(" ").length > 5) return "";
+  // Menu items and loading placeholders (moodi.org: "ACCOMMODATION", "Loading 3D Experience") are never brands.
+  if (/^(home|about( us)?|schedule|events?|merch|competitions?|accommodation|contact( us)?|team|faq|register|login|gallery|blog|tickets?)$/i.test(s) || /^loading\b/i.test(s)) return "";
+  // Leftovers of image file names ("logo@3x.png" came back as "3x Png" on moodi.org): not a brand.
+  if (/\b(png|jpe?g|webp|svg|gif|avif)\b/i.test(s) || /^\d+x\b/i.test(s)) return "";
   return s;
 }
 
@@ -155,9 +159,39 @@ const SPONSOR_PATHS = ["/sponsors", "/partners", "/our-sponsors", "/past-sponsor
 
 /** Sponsor names in a page's visible text (a rendered fetch has no HTML): the inline patterns, plus the short lines
  * listed under a "Sponsors" / "Our partners" heading, until the next heading or a sentence. */
+/** Sponsor pages that print each brand with its role on the next line ("Coca Cola" / "Official Beverage Partner"),
+ * grouped under plural headings ("Media Partners", "Food & Beverages Partners") whose brands may have no role line.
+ * Returns nothing unless at least three name-role pairs are found, so other layouts fall through. */
+function sponsorRolePairs(lines: string[]): { name: string; role?: string }[] {
+  const isRole = (l = "") => l.length <= 60 && /\b(sponsor|partner)\b(?!s)/i.test(l) && !/[.!?]$/.test(l);
+  const isGroup = (l = "") => l.length <= 40 && /\b(sponsors|partners)$/i.test(l);
+  const isName = (l = "") => l.length <= 40 && l.split(/\s+/).length <= 5 && !/[.!?:]$/.test(l) && !isRole(l) && !isGroup(l);
+  const out: { name: string; role?: string }[] = [];
+  let pairs = 0, group = "";
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (isGroup(l)) { group = l.replace(/s$/i, ""); continue; }
+    if (isRole(l) || !isName(l)) continue;
+    const name = cleanSponsorName(l);
+    if (!name) continue;
+    // A bare "SPONSOR" in capitals is a menu button under a nav item, not a role.
+    if (isRole(lines[i + 1]) && !/^(SPONSOR|PARTNER)$/.test(lines[i + 1])) { out.push({ name, role: lines[i + 1].replace(/\b\w/g, (c) => c.toUpperCase()) }); pairs++; }
+    else if (group) out.push({ name, role: group.replace(/\b\w/g, (c) => c.toUpperCase()) });
+  }
+  return pairs >= 3 ? out : [];
+}
+
 export function sponsorsInPageText(text: string): { name: string; role?: string; year?: string }[] {
-  const out: { name: string; role?: string; year?: string }[] = [...sponsorsInText(text)];
+  // The rendered fetch can return the page's HTML rather than its text: one line per element, tags removed.
+  if (/^\s*<(!doctype|html|head|body|div)\b/i.test(text)) {
+    text = decode(text.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<head[\s\S]*?<\/head>/gi, " ")
+      .replace(/<(br|\/(div|p|h\d|li|a|span|section|article|figcaption|td|tr|button))\b[^>]*>/gi, "\n").replace(/<[^>]+>/g, " "))
+      .split("\n").map((l) => l.replace(/\s+/g, " ").trim()).join("\n");
+  }
   const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  const paired = sponsorRolePairs(lines);
+  if (paired.length) return paired.filter((s, i) => paired.findIndex((x) => x.name.toLowerCase() === s.name.toLowerCase()) === i);
+  const out: { name: string; role?: string; year?: string }[] = [...sponsorsInText(text)];
   const heading = (l: string) => l.length <= 60 && /\b(sponsors?|partners?)\b/i.test(l);
   for (let i = 0; i < lines.length; i++) {
     if (!heading(lines[i])) continue;
@@ -277,7 +311,7 @@ export function mergeSponsors(list: PastSponsor[], exclude: string[] = []) {
     if (prev) { prev.role ||= s.role; prev.year ||= s.year; continue; }
     out.push({ ...s });
   }
-  return out.slice(0, 30);
+  return out.slice(0, 80); // big events list 70+ partners (Mood Indigo), and each one shows the level to aim for
 }
 
 /** Everything at once: website, Instagram and the sponsor web search run in parallel. `texts` are pages A0 already

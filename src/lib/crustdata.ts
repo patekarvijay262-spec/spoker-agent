@@ -167,7 +167,8 @@ export async function fetchRendered(urls: string[], trace?: Trace): Promise<Rend
   const rows: any[] = Array.isArray(r) ? r : Array.isArray(r?.results) ? r.results : [];
   return rows.filter((x) => x?.success && x.content).map((x) => {
     trace?.urls.add(String(x.url));
-    return { url: String(x.url), title: String(x.title || ""), content: String(x.content).slice(0, 30000) };
+    return { url: String(x.url), title: String(x.title || ""), // Rendered pages can be raw HTML full of inline styles: keep enough that a long sponsor wall is not cut off.
+    content: String(x.content).slice(0, 200000) };
   });
 }
 
