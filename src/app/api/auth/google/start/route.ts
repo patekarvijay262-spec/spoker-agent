@@ -5,6 +5,10 @@ import { hasGoogleLogin, loginAuthUrl } from "@/lib/google-login";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
+  // Google accepts only the redirect address registered for the client. Opened through a deployment-specific
+  // Vercel address (spoker-agent-abc123-….vercel.app), sign-in starts again from the main one instead.
+  const main = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (main && url.host !== main && url.host.endsWith(".vercel.app")) return Response.redirect(`https://${main}${url.pathname}${url.search}`, 302);
   if (!hasGoogleLogin()) return new Response(null, { status: 302, headers: { location: `${url.origin}/login?error=${encodeURIComponent("Google sign-in is not set up yet. An admin needs to add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Vercel, or use a password instead.")}` } });
   const nextRaw = url.searchParams.get("next") || "/desk?resume=1";
   const next = nextRaw.startsWith("/") ? nextRaw : "/desk";
