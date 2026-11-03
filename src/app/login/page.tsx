@@ -72,6 +72,7 @@ export default function LoginPage() {
         </div>
         <Suspense><LoginForm /></Suspense>
         <p className="text-center text-xs text-muted-foreground">Anyone with a Google account can join. An admin sets your role.</p>
+        <p className="text-center text-xs text-muted-foreground"><a className="hover:underline" href="/privacy">Privacy</a> · <a className="hover:underline" href="/terms">Terms</a></p>
       </div>
     </main>
   );
