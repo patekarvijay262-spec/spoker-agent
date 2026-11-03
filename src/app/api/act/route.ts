@@ -64,7 +64,7 @@ async function run(b: any, me: User, origin: string) {
       return F.lockFloor(floor, who);
     }
     // A1 / A2
-    case "discover": return F.runDiscover(Math.max(1, Math.min(25, Number(b.count || 8))));
+    case "discover": return F.runDiscover(Math.max(1, Math.min(100, Number(b.count || 8))));
     case "analyze": case "rediscover": return F.runAnalyze(String(b.company_id));
     case "add_company": {
       const name = String(b.name || "").trim();

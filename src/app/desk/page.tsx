@@ -7,7 +7,7 @@ import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
 import { FitRing, Panel, PriorityBadge, Stat } from "@/components/desk/bits";
 import { useDesk } from "@/components/desk/desk-provider";
 import { actorName, type Any, ago, brandName, clock, humanLog, isHuman, lakh, money, visibleLog } from "@/components/desk/format";
@@ -36,6 +36,8 @@ export default function Dashboard() {
   const { data, busy, progress, autopilot, openCompany, can } = useDesk();
   const [count, setCount] = useState(8);
   const e = data.event;
+  // Counts set per category on the Event brief decide how many to find.
+  const seatTotal = Object.entries(e?.category_counts || {}).filter(([id]) => (e?.sponsor_categories || []).includes(id)).reduce((s, [, n]) => s + (Number(n) || 0), 0);
   if (!e) return <Welcome />;
   const cos: Any[] = data.companies;
   const live = cos.filter((c) => c.stage !== "DISQUALIFIED");
@@ -60,10 +62,12 @@ export default function Dashboard() {
           <Button nativeButton={false} render={<Link href="/desk/brief" />}>Review tiers and lock the floor<ArrowRight /></Button>
         ) : (
           <div className="flex items-center gap-2">
-            <NativeSelect value={String(count)} onChange={(x) => setCount(Number(x.target.value))} aria-label="How many companies to find" className="w-24">
-              {[5, 8, 12, 15, 20].map((n) => <NativeSelectOption key={n} value={String(n)}>{n}</NativeSelectOption>)}
-            </NativeSelect>
-            <Button disabled={!!busy || !!progress || !can("operator")} onClick={() => autopilot(count)}>{progress ? "Running…" : "Find sponsors"}</Button>
+            {seatTotal ? (
+              <span className="text-sm text-muted-foreground" title="Set per category on the Event brief">{seatTotal} by category</span>
+            ) : (
+              <Input type="number" inputMode="numeric" min={1} max={100} value={count || ""} onChange={(x) => setCount(Math.max(0, Math.min(100, Math.round(Number(x.target.value) || 0))))} aria-label="How many companies to find" className="w-20" />
+            )}
+            <Button disabled={!!busy || !!progress || !can("operator") || (!seatTotal && !count)} onClick={() => autopilot(seatTotal || count)}>{progress ? "Running…" : "Find sponsors"}</Button>
           </div>
         )}
       </div>

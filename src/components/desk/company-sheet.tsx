@@ -219,6 +219,12 @@ export function ContactCard({ ct, co }: { ct: Any; co: Any }) {
         <div className="flex min-w-0 items-center gap-2"><Mail className="size-4 shrink-0 text-muted-foreground" />{ct.email ? <><span className="truncate">{ct.email}</span><VerifyBadge s={ct.email_status} /></> : <span className="text-muted-foreground">No work email found</span>}</div>
         <div className="flex min-w-0 items-center gap-2"><Phone className="size-4 shrink-0 text-muted-foreground" />{ct.phone ? <span className="truncate">{ct.phone}{ct.phone_type === "switchboard" ? " (switchboard)" : ""}</span> : <span className="text-muted-foreground">No business phone</span>}</div>
       </div>
+      {(ct.evidence || [])[0]?.url && /linkedin\.com/i.test(ct.evidence[0].url) && (
+        <a href={ct.evidence[0].url} target="_blank" rel="noreferrer" className="mt-2 inline-flex max-w-full items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+          <ExternalLink className="size-3 shrink-0" /><span className="truncate">{ct.evidence[0].url.replace(/^https?:\/\/(www\.)?/, "")}</span>
+          {ct.email && /crustdata/i.test(ct.email_source || "") && <span className="shrink-0">· email found from this profile</span>}
+        </a>
+      )}
       {ct.warm_path && <p className="mt-2 rounded-lg bg-success/10 px-3 py-1.5 text-xs text-success">{ct.warm_path}</p>}
       {(ct.email_check || []).length > 0 && <p className="mt-2 text-[0.7rem] text-muted-foreground">Checks: {ct.email_check.join(" · ")}</p>}
       {parts.length > 0 && (
@@ -229,7 +235,7 @@ export function ContactCard({ ct, co }: { ct: Any; co: Any }) {
       )}
       <div className="mt-3 flex flex-wrap gap-2">
         {ct.email && <Button size="sm" variant="outline" onClick={() => copy(ct.email)}><Copy className="size-3.5" />Copy email</Button>}
-        {(ct.evidence || [])[0]?.url && <Button size="sm" variant="outline" nativeButton={false} render={<a href={ct.evidence[0].url} target="_blank" rel="noreferrer" />}><ExternalLink className="size-3.5" />Profile</Button>}
+        {(ct.evidence || [])[0]?.url && <Button size="sm" variant="outline" nativeButton={false} render={<a href={ct.evidence[0].url} target="_blank" rel="noreferrer" />}><ExternalLink className="size-3.5" />{/linkedin\.com/i.test(ct.evidence[0].url) ? "LinkedIn" : "Profile"}</Button>}
         {!ct.is_primary && <Button size="sm" variant="outline" disabled={!!busy} onClick={() => act("set_primary", { contact_id: ct.id }, "Changing the primary contact")}>Make primary</Button>}
         {!ct.reviewed_at && ct.email && <Button size="sm" variant="outline" disabled={!!busy} onClick={() => act("contact_reviewed", { contact_id: ct.id }, "Marking as reviewed")}><Check className="size-3.5" />Mark reviewed</Button>}
         {ct.is_primary && ct.email && <Button size="sm" disabled={!!busy} onClick={() => act("prepare_outreach", { company_id: co.id }, "Preparing the priced offer")}>Prepare offer</Button>}

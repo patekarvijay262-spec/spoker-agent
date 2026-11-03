@@ -67,6 +67,16 @@ export function DeskHeader() {
           <LayoutControls />
           <ThemeSwitcher />
         </div>
+        {/* Progress along the top edge on every screen size: a moving sliver while one task runs, a filling bar when
+            the desk knows how many steps there are (scoring company 3 of 12). */}
+        {(busy || progress) && (
+          <div className="absolute inset-x-0 bottom-0 h-[0.1875rem] overflow-hidden bg-muted" role="progressbar" aria-label={label}
+            {...(progress ? { "aria-valuemin": 0, "aria-valuemax": progress.total, "aria-valuenow": progress.done } : {})}>
+            {progress
+              ? <div className="h-full bg-primary transition-[width] duration-500" style={{ width: `${Math.round(((progress.done + 0.5) / Math.max(1, progress.total)) * 100)}%` }} />
+              : <div className="sd-indeterminate h-full w-1/3 bg-primary" />}
+          </div>
+        )}
       </div>
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput placeholder="Type a company, a page or a question..." />

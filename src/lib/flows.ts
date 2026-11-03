@@ -58,8 +58,8 @@ const cleanPrefs = (p?: BriefPrefs) => ({
   sponsor_categories: (p?.categories || []).map(String).slice(0, 14),
   wanted_brands: (p?.brands || []).map((b) => String(b).trim()).filter(Boolean).slice(0, 25),
   // How many sponsors per picked category (1 to 10); only picked categories keep a number.
-  contacts_per_company: Math.max(1, Math.min(20, Math.round(Number(p?.people) || 2))),
-  category_counts: Object.fromEntries(Object.entries(p?.counts || {}).filter(([id]) => (p?.categories || []).includes(id)).map(([id, n]) => [id, Math.max(1, Math.min(10, Math.round(Number(n) || 1)))])),
+  contacts_per_company: Math.max(1, Math.min(50, Math.round(Number(p?.people) || 2))),
+  category_counts: Object.fromEntries(Object.entries(p?.counts || {}).filter(([id]) => (p?.categories || []).includes(id)).map(([id, n]) => [id, Math.max(1, Math.min(50, Math.round(Number(n) || 1)))])),
 });
 
 const cleanLinks = (l?: A.BriefLinks): A.BriefLinks => ({
@@ -187,12 +187,19 @@ export async function runAnalyze(companyId: string) {
     return { priority, dropped: false, contact: false };
   }
   const kind = C.sponsorKind(co.segment, a.model);
-  const checked = await Promise.all(found.map(async (x) => {
+  const verifiedOnly = (await getSetting("verified_only", "1")) !== "0"; // on unless turned off in Settings
+  const checked = (await Promise.all(found.map(async (x) => {
     const email = await C.checkEmail({ email: x.email, fullName: x.full_name, companyDomain: co.domain, sourceUrl: /^https?:/.test(x.email_source || "") ? x.email_source : "", sourceKind: x.email_verified_by_crustdata && usedCrustdata ? "crustdata_verified" : "", evidenceDate: x.evidence_date, leftCompany: !!x.left_company });
     const phone = await C.checkPhone({ phone: x.phone, type: x.phone_type, sourceUrl: x.phone_source, companyDomain: co.domain, switchboard: a.company_contact?.phone });
     const sc = C.scoreContact({ position: x.designation, department: x.department, responsibility: x.responsibility, emailStatus: email.status, phoneStatus: phone.status, phoneType: phone.type, evidenceDate: x.evidence_date, companySize: num(a.company_size) }, kind);
     return { x, email, phone, sc };
-  }));
+  }))).filter((r) => !verifiedOnly || (r.email.status === "VERIFIED" && r.x.kind !== "fallback"));
+  // Verified people only: a real person whose work email was confirmed. Guessed, unverified and generic company
+  // addresses are not kept, so every draft goes to someone who will actually receive it.
+  if (!checked.length) {
+    await L.addException(companyId, "no_contact", `No one at ${co.name} has a verified work email yet.`, "Use Find people again later, or add a person you know by hand.");
+    return { priority, dropped: false, contact: false };
+  }
   // Primary = most relevant usable person (not outdated); departmental fallbacks only if no person qualifies.
   const ranked = [...checked].sort((p, q) => (Number(q.x.kind !== "fallback") - Number(p.x.kind !== "fallback")) || (q.sc.score - p.sc.score));
   const best = ranked.find((r) => r.email.status !== "OUTDATED") || ranked[0];

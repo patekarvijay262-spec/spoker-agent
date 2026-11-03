@@ -33,6 +33,32 @@ type Desk = {
   autopilot: (count: number) => Promise<void>;
 };
 
+/** One short line when a major task finishes; small edits stay quiet. */
+function doneMessage(op: string, r: Any): [string, string?] | null {
+  const n = (x: Any) => (Array.isArray(x) ? x.length : Number(x) || 0);
+  switch (op) {
+    case "brief": return r?.clarify ? null : ["Event packaged", "Tiers, floor and audience are ready. Lock the floor to start finding sponsors."];
+    case "prefs": return ["Preferences saved"];
+    case "lock_floor": return ["Floor locked", "You can now find sponsors."];
+    case "discover": return [`Found ${n(r?.added)} companies`, "Scoring them next."];
+    case "analyze": return r?.dropped ? ["Company dropped", "It did not fit this event."] : [`Scored: ${r?.priority || "done"}`, r?.contact ? "Verified people found." : "No verified person yet."];
+    case "rediscover": return ["People search finished"];
+    case "past_sponsors": return ["Past sponsors updated"];
+    case "schedule": return ["Meeting times sent for approval"];
+    case "confirm_meeting": return ["Meeting booked"];
+    case "send_mou": return ["MOU sent"];
+    case "prepare_outreach": case "next_wave": return r?.people?.length ? [`Drafted for ${r.people.join(", ")}`, "Waiting in the Outbox for your approval."] : ["Offer drafted", "Waiting in the Outbox for your approval."];
+    case "approve": return ["Approved"];
+    case "approve_many": return [`Approved ${n(r?.results)}`];
+    case "send": return [`Sent ${n(r?.sent)}`];
+    case "replies": return ["Inbox checked"];
+    case "deck": return ["Deck ready"];
+    case "mou": return ["MOU drafted"];
+    case "add_company": return ["Company added"];
+    default: return null;
+  }
+}
+
 const Ctx = createContext<Desk | null>(null);
 export const useDesk = () => {
   const c = useContext(Ctx);
@@ -70,6 +96,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     try {
       const r = await api("/api/act", { op, ...body });
       if (reload) await load();
+      const msg = doneMessage(op, r);
+      if (msg) flash(msg[0], msg[1], "success");
       return r;
     } catch (e: Any) {
       if (e.code !== 401) flash("That did not work", e.message, "error");

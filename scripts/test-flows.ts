@@ -62,6 +62,7 @@ let fails = 0; const eq = (n: string, g: any, w: any) => { const ok = JSON.strin
   eq("A0 postal address with PIN", /400076/.test(p.postal_address), true);
   eq("A0 reads a JavaScript-built sponsors page through the rendered fetch", (p.past_sponsor_list || []).filter((s: any) => s.source === "website").map((s: any) => `${s.name}/${s.role}`), ["Delta Capital/Title Sponsor", "Zeta Foods/Title Sponsor"]);
   await setSetting("approvers", "Rishiraaj");
+  await setSetting("verified_only", "0"); // these flows check the unverified paths too; verified-only is tested at the end
   let blocked = ""; try { await F.runDiscover(5); } catch (e: any) { blocked = e.message; }
   eq("A1 refuses before floor is locked", blocked.startsWith("Lock the floor"), true);
   await F.lockFloor(200000, "Rishiraaj");
@@ -201,5 +202,10 @@ let fails = 0; const eq = (n: string, g: any, w: any) => { const ok = JSON.strin
   eq("waves: the 3 best first (primary leads); the next 3 wait until that wave has run its course", [w1.queued, w1.people[0], w1.left, w2.queued, w3.queued], [3, "Nina Rao", 2, 0, 0]);
   const S = await import("../src/lib/sponsor-categories");
   eq("seats per category map to real industry labels", [S.categoryById("food")?.industries.includes("Food and Beverage Manufacturing"), S.categoryById("fintech")?.industries.includes("Banking")], [true, true]);
+  // Verified people only (the default): nobody without a verified work email is kept or written to.
+  await setSetting("verified_only", "1");
+  await d.q(`INSERT INTO companies (id, name, domain, stage, reasons, updated_at) SELECT 'vo-co', 'Acme Fintech Two', 'acme.in', 'PROSPECT', reasons, updated_at FROM companies WHERE id='acme-in'`);
+  const vo: any = await F.runAnalyze("vo-co");
+  eq("verified only: unverified people are not kept", [vo.contact, (await d.q(`SELECT COUNT(*) AS n FROM contacts WHERE company_id='vo-co'`))[0].n, (await d.q(`SELECT COUNT(*) AS n FROM exceptions WHERE company_id='vo-co' AND kind='no_contact'`))[0].n], [false, 0, 1]);
   console.log(fails ? `${fails} FAILED` : "ALL PASS"); process.exit(fails ? 1 : 0);
 })().catch((e) => { console.error("ERROR", e); process.exit(1); });

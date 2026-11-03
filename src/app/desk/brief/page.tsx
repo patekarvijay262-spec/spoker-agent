@@ -149,6 +149,17 @@ function PastSponsors() {
   );
 }
 
+/** A number anyone can type, 1 to `max`. Empty while typing; leaving it empty falls back to 1. */
+function NumberBox({ value, max, label, onChange, className }: { value: number; max: number; label: string; onChange: (v: number) => void; className?: string }) {
+  const [text, setText] = useState(String(value));
+  return (
+    <input type="number" inputMode="numeric" min={1} max={max} aria-label={label} value={text}
+      onChange={(x) => { setText(x.target.value); const v = Math.round(Number(x.target.value)); if (v >= 1) onChange(Math.min(max, v)); }}
+      onBlur={() => { const v = Math.max(1, Math.min(max, Math.round(Number(text)) || 1)); setText(String(v)); onChange(v); }}
+      className={cn("h-full bg-transparent px-2 py-1 text-center text-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring", className)} />
+  );
+}
+
 function Prefs() {
   const { data, act, busy, can } = useDesk();
   const e = data.event;
@@ -167,13 +178,7 @@ function Prefs() {
           return (
             <span key={c.id} className={cn("inline-flex items-center overflow-hidden rounded-md border text-sm transition", on ? "border-primary" : "")}>
               <button type="button" aria-pressed={on} title={c.hint} onClick={() => setCats(on ? cats.filter((x) => x !== c.id) : [...cats, c.id])} className={cn("px-2.5 py-1", on ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{c.label}</button>
-              {on && (
-                <span className="inline-flex items-center tabular-nums">
-                  <button type="button" aria-label={`Fewer ${c.label}`} className="px-1.5 py-1 text-muted-foreground hover:text-foreground" onClick={() => setCounts({ ...counts, [c.id]: Math.max(1, n(c.id) - 1) })}>−</button>
-                  <span className="min-w-[1.25rem] text-center" aria-label={`${n(c.id)} sponsors`}>{n(c.id)}</span>
-                  <button type="button" aria-label={`More ${c.label}`} className="px-1.5 py-1 text-muted-foreground hover:text-foreground" onClick={() => setCounts({ ...counts, [c.id]: Math.min(10, n(c.id) + 1) })}>+</button>
-                </span>
-              )}
+              {on && <NumberBox value={n(c.id)} max={50} label={`How many ${c.label}`} onChange={(v) => setCounts({ ...counts, [c.id]: v })} className="w-12 border-0 border-l" />}
             </span>
           );
         })}
@@ -181,12 +186,8 @@ function Prefs() {
       <Input value={brands} onChange={(x) => setBrands(x.target.value)} placeholder="Brands you want, comma separated" aria-label="Brands you want" />
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
         <span>People to find per company</span>
-        <span className="inline-flex items-center rounded-md border tabular-nums">
-          <button type="button" aria-label="Fewer people" className="px-2 py-1 text-muted-foreground hover:text-foreground" onClick={() => setPeople(Math.max(1, people - 1))}>−</button>
-          <span className="min-w-[1.5rem] text-center">{people}</span>
-          <button type="button" aria-label="More people" className="px-2 py-1 text-muted-foreground hover:text-foreground" onClick={() => setPeople(Math.min(20, people + 1))}>+</button>
-        </span>
-        <span className="text-xs text-muted-foreground">About 2 Crustdata credits each. Emails go 3 at a time.</span>
+        <NumberBox value={people} max={50} label="People to find per company" onChange={setPeople} className="w-16 rounded-md border" />
+        <span className="text-xs text-muted-foreground">Verified work emails only. Emails go 3 at a time.</span>
       </div>
       {dirty && <Button size="sm" disabled={!!busy || !can("operator")} onClick={() => act("prefs", { prefs: { categories: cats, people, counts: Object.fromEntries(cats.map((id) => [id, n(id)])), brands: brands.split(",").map((b) => b.trim()).filter(Boolean) } }, "Saving preferences")}>Save</Button>}
     </Section>

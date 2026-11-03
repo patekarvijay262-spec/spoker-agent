@@ -523,7 +523,7 @@ export async function discover(e: EventProfile, count: number, exclude: string[]
   // Seats per category set by the organiser ("3 food and beverages, 2 banking"): each category is searched on its own
   // and filled to its number, so the list matches the partner slots the event actually sells.
   const seats = Object.entries(e.category_counts || {})
-    .map(([id, n]) => [id, Math.max(0, Math.min(10, Math.round(Number(n) || 0)))] as [string, number])
+    .map(([id, n]) => [id, Math.max(0, Math.min(50, Math.round(Number(n) || 0)))] as [string, number])
     .filter(([id, n]) => n > 0 && categoryById(id));
   const industries = seats.length ? industriesFor(seats.map(([id]) => id)) : e.sponsor_categories?.length ? industriesFor(e.sponsor_categories) : DISCOVER_INDUSTRIES[type];
   const common: CD.Filter[] = [
@@ -532,7 +532,7 @@ export async function discover(e: EventProfile, count: number, exclude: string[]
   ];
   if (exclude.length) common.push({ field: "basic_info.name", type: "not_in", value: exclude.slice(0, 500) });
   const sizeRange = (min: number, max: number | null): CD.Filter[] => [{ field: "headcount.total", type: "=>", value: min }, ...(max ? [{ field: "headcount.total", type: "=<", value: max } as CD.Filter] : [])];
-  const want = seats.length ? Math.min(seats.reduce((s, [, n]) => s + n, 0), 40) : Math.min(Math.max(count, 3), 25);
+  const want = seats.length ? Math.min(seats.reduce((s, [, n]) => s + n, 0), 150) : Math.min(Math.max(count, 1), 100);
   const per = (p: "early" | "growth" | "established") => Math.max(plan.mix[p] > 0.08 ? 3 : 0, Math.ceil(want * plan.mix[p] * 1.6));
   // Three pools, each searched on its own so one kind of company cannot crowd out the others.
   const pools: { pool: "early" | "growth" | "established"; filters: CD.Filter[]; sorts: { field: string; order: "asc" | "desc" }[] }[] = [
@@ -866,9 +866,9 @@ export async function analyze(e: EventProfile, company: { name: string; domain?:
   const kind = sponsorKind(SEGMENT[cls], offer.model);
   const words = [...new Set([...TITLE_WORDS[kind], ...(offer.model === "hiring" ? ["talent acquisition", "campus", "university relations", "employer brand"] : [])])];
   // How many people to find per company (organiser's setting, 2 by default, up to 20): more people, more ways in.
-  const perCo = Math.max(1, Math.min(20, Math.round(Number(e.contacts_per_company) || 2)));
+  const perCo = Math.max(1, Math.min(50, Math.round(Number(e.contacts_per_company) || 2)));
   let people: any[] = [];
-  if (!dropReason) { try { people = await CD.searchPeople(cid, coName, words, Math.min(40, Math.max(12, perCo * 2)), trace); } catch (err: any) { signals.push({ claim: `People search failed: ${String(err.message).slice(0, 120)}`, source: "crustdata" }); } }
+  if (!dropReason) { try { people = await CD.searchPeople(cid, coName, words, Math.min(100, Math.max(12, perCo * 3)), trace); } catch (err: any) { signals.push({ claim: `People search failed: ${String(err.message).slice(0, 120)}`, source: "crustdata" }); } }
   const orgWords = `${e.organizer} ${e.name}`.toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 3 && !/^(the|team|club|cell|fest|summit|society|college|event)$/.test(w));
   const coWord = (coName.toLowerCase().match(/[a-z]{4,}/) || [""])[0].replace(/s$/, "");
   const cands = people.map((p) => {
@@ -885,10 +885,13 @@ export async function analyze(e: EventProfile, company: { name: string; domain?:
     const moved = (g(p, "experience.employment_details.current") || []).find((x: any) => x !== cur && x.crustdata_company_id && cid && Number(x.crustdata_company_id) !== cid && String(x.start_date || "") > String(cur.start_date || "0"));
     return { name: String(g(p, "basic_profile.name") || ""), title, start: String(cur.start_date || "").slice(0, 10), url, alum, schools, moved: moved ? `${moved.title} at ${moved.name} since ${String(moved.start_date || "").slice(0, 7)}` : "", hasEmail: !!g(p, "contact.has_business_email"), prelim: prelim.score + (g(p, "contact.has_business_email") ? 6 : 0) - (moved ? 60 : 0) - channel - junior };
   }).filter((x) => x.name && x.title && !(coWord && x.name.toLowerCase().replace(/[^a-z]/g, "").includes(coWord))).sort((a, b) => b.prelim - a.prelim); // a page named after the company is not a person
-  const top = cands.slice(0, perCo);
-  // Business emails only for the people kept (about 2 credits each). Keep an address only if it belongs to THIS company.
+  // Only people with a verified work email are kept, and many profiles have none: look up twice the number asked for
+  // (about 2 credits each, 25 per call) and keep the best placed ones that verify.
+  const top = cands.slice(0, Math.min(cands.length, perCo * 2));
+  // Keep an address only if it belongs to THIS company.
   let mails: Record<string, { email: string; status: string; company_id?: number }[]> = {};
-  if (top.some((t) => t.url)) { try { mails = await CD.businessEmails(top.map((t) => t.url), trace); } catch { mails = {}; } }
+  const urls = top.map((t) => t.url).filter(Boolean);
+  for (let i = 0; i < urls.length; i += 25) { try { Object.assign(mails, await CD.businessEmails(urls.slice(i, i + 25), trace)); } catch { /* keep what came back */ } }
   const contacts: FoundContact[] = top.map((t, i) => {
     const list = mails[CD.normUrl(t.url)] || [];
     // The address itself must be on the company's domain (or a same-brand variant like bisleri.co.in for bisleri.com).
@@ -909,6 +912,9 @@ export async function analyze(e: EventProfile, company: { name: string; domain?:
       iitb_alum: t.alum ? "yes" : t.schools.length ? "no" : "unknown", warm_path: t.alum ? "Alumnus of the organising institute: ask the alumni cell for an introduction" : "",
     } as FoundContact;
   });
+  // Verified first, best placed first within each group, then the number the organiser asked for.
+  const kept = [...contacts.filter((c) => c.email_verified_by_crustdata), ...contacts.filter((c) => !c.email_verified_by_crustdata)]
+    .slice(0, perCo).map((c, i) => ({ ...c, kind: (i === 0 ? "primary" : "alternative") as FoundContact["kind"] }));
   const cEmail = String(g(c, "funding.contact_email") || "");
   const cPhone = String(g(c, "funding.phone_number") || "");
   const companyContact = cEmail || cPhone ? { email: domains.some((d) => cEmail.toLowerCase().endsWith("@" + d)) && !/^(support|care|help|helpdesk|customercare|customer\.?care|grievance|complaints?|noreply|no-reply|feedback|orders?|refunds?)@/i.test(cEmail) ? cEmail : "", phone: cPhone, source: "crustdata" } : undefined;
@@ -974,8 +980,8 @@ export async function analyze(e: EventProfile, company: { name: string; domain?:
     if (hc > 10000) out.push("Large company: expect vendor onboarding, a PO and longer approvals.");
     if (sf < 0.6 && hc > plan.sweet[1]) out.push(`Much bigger than a typical sponsor of a ${plan.band} event: expect a low reply rate. Pitch one specific activation or an in-kind deal, not a top tier.`);
     if (sf < 0.6 && hc && hc < plan.sweet[0]) out.push(`Small team for an event this size: likely good for Silver, in-kind or a category slot rather than Title.`);
-    if (contacts[0] && /\b(assistant|associate|executive)\b/i.test(contacts[0].designation) && !/\bhead\b|general manager|director|vice president|\bvp\b|chief/i.test(contacts[0].designation)) out.push(`The best contact found is junior (${contacts[0].designation}); ask them to loop in their manager.`);
-    if (!contacts.length) out.push("No decision maker found yet: add one by hand or ask for an introduction.");
+    if (kept[0] && /\b(assistant|associate|executive)\b/i.test(kept[0].designation) && !/\bhead\b|general manager|director|vice president|\bvp\b|chief/i.test(kept[0].designation)) out.push(`The best contact found is junior (${kept[0].designation}); ask them to loop in their manager.`);
+    if (!kept.length) out.push("No decision maker found yet: add one by hand or ask for an introduction.");
     if (fit < 0.55) out.push("Audience fit is moderate: lead with a smaller, measurable ask.");
     return out;
   };
@@ -984,7 +990,7 @@ export async function analyze(e: EventProfile, company: { name: string; domain?:
   const lower = tiers[tIdx + 1];
   const price = tier ? (lower ? `${lakh(lower.price_inr).replace("INR ", "INR ")} to ${lakh(tier.price_inr).replace("INR ", "")}` : `${lakh(tier.price_inr)}`) : "in-kind";
   const activation = offer.activation(brand, e.name);
-  const best = contacts[0];
+  const best = kept[0];
   const hookSignal = signals.find((s) => s.source === "crustdata" && /Raised/.test(s.claim) && daysAgo(s.date) < 180) || signals.find((s) => /Headcount \+/.test(s.claim)) || signals.find((s) => /open roles/.test(s.claim));
   const opener = !hookSignal ? `${brand} came up while we looked for partners who fit our audience.`
     : /Raised/.test(hookSignal.claim) ? `Congratulations on the ${hookSignal.claim.replace(/^Raised (a |an )?/, "").replace(/ of USD.*/, "")}${monthYear(hookSignal.date) ? ` in ${monthYear(hookSignal.date)}` : ""}.`
@@ -1008,7 +1014,7 @@ export async function analyze(e: EventProfile, company: { name: string; domain?:
     angle: `${hookSignal ? hookSignal.claim : industry || "Good audience fit"}. Offer: ${activation}, in front of ${AUDIENCE[type].short}.`,
     audience_benefit: offer.benefit,
     role_map: { champion: best ? `${best.full_name}, ${best.designation}` : "", budget_owner: cands.find((x) => /chief|cmo|vp|vice president|head/i.test(x.title))?.title || "", agency: "", procurement: hc > 1000 ? "Likely: vendor onboarding needs PAN, GST and bank letter" : "" },
-    contacts: dropReason ? [] : contacts, company_contact: companyContact, company_size: hc,
+    contacts: dropReason ? [] : kept, company_contact: companyContact, company_size: hc,
     about: {
       description: shortDesc(desc), industry, headcount: hc || null, website: String(g(c, "basic_info.website") || (domain ? `https://${domain}` : "")),
       founded: Number(g(c, "basic_info.year_founded") || 0) || null, hq: [g(c, "locations.city"), g(c, "locations.country")].filter((x) => x && x !== "India, India").join(", ") || null,

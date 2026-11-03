@@ -317,3 +317,11 @@ html {
   .animate-rise { animation: sd-rise 0.2s ease-out both; }
   @media (prefers-reduced-motion: reduce) { .animate-ring, .animate-flow, .animate-rise { animation: none; } }
 }
+
+/* Top progress bar while a task runs with no step count. */
+@keyframes sd-indeterminate {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
+.sd-indeterminate { animation: sd-indeterminate 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .sd-indeterminate { animation: none; width: 100%; opacity: 0.5; } }
