@@ -78,7 +78,13 @@ async function run(b: any, me: User, origin: string) {
     case "set_email": return F.setContactEmail(String(b.contact_id), String(b.email || ""));
     case "contact_reviewed": return F.markContactReviewed(String(b.contact_id), who);
     case "set_primary": return F.setPrimaryContact(String(b.contact_id), who);
-    case "prepare_outreach": return F.queueOffer(String(b.company_id));
+    // A wave of up to 3 people; when nobody qualifies yet, the single-contact path explains why (unverified email…).
+    case "prepare_outreach": case "next_wave": {
+      const w = await F.queueWave(String(b.company_id));
+      if (w.queued) return w;
+      if (b.op === "next_wave") throw new Error(w.reason);
+      return F.queueOffer(String(b.company_id));
+    }
     // Email agent / approvals
     case "edit": return L.editDraft(String(b.key), String(b.subject || ""), String(b.body || ""));
     case "approve": return L.approve(String(b.key), who, true);

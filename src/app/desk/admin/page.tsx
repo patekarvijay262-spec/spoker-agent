@@ -15,7 +15,7 @@ import { type Any, ago, api, when } from "@/components/desk/format";
 const OP: Record<string, string> = {
   brief: "Wrote the event brief", past_sponsors: "Searched for past sponsors", prefs: "Changed sponsor preferences", edit_event: "Edited tiers or event details",
   lock_floor: "Locked the floor price", discover: "Ran sponsor discovery", analyze: "Scored a company", add_company: "Added a company", rediscover: "Searched for people again",
-  set_email: "Added a contact email", set_primary: "Changed the primary contact", contact_reviewed: "Reviewed a contact", prepare_outreach: "Prepared an offer",
+  set_email: "Added a contact email", set_primary: "Changed the primary contact", contact_reviewed: "Reviewed a contact", prepare_outreach: "Prepared an offer", next_wave: "Wrote to the next people at a company",
   approve: "Approved an email", approve_many: "Approved several emails", reject: "Rejected an email", edit: "Edited an email", send: "Sent approved emails", delivery: "Resolved a delivery check",
   schedule: "Drafted a meeting email", confirm_meeting: "Booked a meeting", deck: "Built a sponsor deck", notes: "Added meeting notes", gemini_notes: "Imported meeting notes",
   resolve: "Decided an exception", mou: "Drafted an MOU", send_mou: "Sent an MOU", nurture: "Wrote a sponsor update", replies: "Checked replies", stage: "Moved a deal",

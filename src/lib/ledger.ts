@@ -5,6 +5,7 @@ import { lint } from "./lint";
 export const PRE_REPLY = ["PROSPECT", "QUALIFIED", "CONTACT_READY", "CONTACTED", "FOLLOWUP_1", "FOLLOWUP_2"];
 export const DEAD = ["OPTED_OUT", "BOUNCED", "LOST", "DISQUALIFIED"];
 export const COLD_MAX_STEP = 2;
+export const PARALLEL_COLD = 3; // people at one company in live cold threads at once: one wave
 export const COLD_GAPS_BD: Record<number, number> = { 1: 3, 2: 5 };
 const AUTO_NAMES = new Set(["", "auto", "agent", "claude", "system", "bot", "assistant"]);
 
@@ -86,8 +87,10 @@ export async function queue(m: QueueInput): Promise<{ ok: boolean; reason?: stri
   if (!st) return { ok: false, reason: "no_company" };
   if (m.sequence === "cold") {
     if (m.step > COLD_MAX_STEP) return { ok: false, reason: `cold_step_max_${COLD_MAX_STEP}` };
-    const other = await d.q(`SELECT 1 FROM messages WHERE company_id=$1 AND sequence='cold' AND contact_id<>$2 AND status IN ('drafted','approved','claimed','sent')`, [m.company_id, m.contact_id]);
-    if (other.length && st !== "NO_RESPONSE") return { ok: false, reason: "one_live_thread_per_company" };
+    // At most one wave (3 people) in live cold threads per company; the next wave starts once that one has run its
+    // course (NO_RESPONSE). Many people at a company are reached as a ladder, never as a blast.
+    const other = await d.q(`SELECT DISTINCT contact_id FROM messages WHERE company_id=$1 AND sequence='cold' AND contact_id<>$2 AND status IN ('drafted','approved','claimed','sent')`, [m.company_id, m.contact_id]);
+    if (other.length >= PARALLEL_COLD && st !== "NO_RESPONSE") return { ok: false, reason: "wave_full" };
     if (await humanReplyExists(m.company_id)) return { ok: false, reason: "company_already_replied" };
   }
   const problems = lint(m.subject, m.body, m.sequence, m.step, await getSetting("postal", ""));

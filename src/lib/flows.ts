@@ -53,8 +53,14 @@ function mergeSources(signals: any[] = [], found: A.Source[] = []) {
 }
 
 // ---------- A0 ----------
-export type BriefPrefs = { categories?: string[]; brands?: string[] };
-const cleanPrefs = (p?: BriefPrefs) => ({ sponsor_categories: (p?.categories || []).map(String).slice(0, 14), wanted_brands: (p?.brands || []).map((b) => String(b).trim()).filter(Boolean).slice(0, 25) });
+export type BriefPrefs = { categories?: string[]; brands?: string[]; counts?: Record<string, number>; people?: number };
+const cleanPrefs = (p?: BriefPrefs) => ({
+  sponsor_categories: (p?.categories || []).map(String).slice(0, 14),
+  wanted_brands: (p?.brands || []).map((b) => String(b).trim()).filter(Boolean).slice(0, 25),
+  // How many sponsors per picked category (1 to 10); only picked categories keep a number.
+  contacts_per_company: Math.max(1, Math.min(20, Math.round(Number(p?.people) || 2))),
+  category_counts: Object.fromEntries(Object.entries(p?.counts || {}).filter(([id]) => (p?.categories || []).includes(id)).map(([id, n]) => [id, Math.max(1, Math.min(10, Math.round(Number(n) || 1)))])),
+});
 
 const cleanLinks = (l?: A.BriefLinks): A.BriefLinks => ({
   website: String(l?.website || "").trim().slice(0, 300), instagram: String(l?.instagram || "").trim().slice(0, 120),
@@ -215,7 +221,7 @@ export async function runAnalyze(companyId: string) {
   const email = best.email.normalized;
   if (email && (best.email.status === "VERIFIED" || best.email.status === "CORROBORATED")) {
     await L.setStage(companyId, "CONTACT_READY", `contact ${ct.full_name} (${best.email.status.toLowerCase()})`, "A2");
-    if (priority === "P1" || priority === "P2") queued = await queueOffer(companyId);
+    if (priority === "P1" || priority === "P2") queued = await queueWave(companyId);
   } else if (email) {
     await L.addException(companyId, "verify_contact", `${ct.full_name} (${ct.designation}) at ${co.name}: the email ${email} could not be verified (${best.email.notes.join("; ")}).`, "Check it on Decision Makers, then mark the contact as reviewed to prepare the offer.");
   } else {
@@ -233,7 +239,7 @@ function foundContacts(a: A.Analysis): A.FoundContact[] {
     if (a.backup_contact?.full_name) list.push({ kind: "alternative", full_name: a.backup_contact.full_name, designation: a.backup_contact.position || "" });
   }
   if (a.company_contact?.email && !list.some((x) => x.kind === "fallback")) list.push({ kind: "fallback", full_name: `${"Company"} contact`, designation: "Official contact", email: a.company_contact.email, email_source: a.company_contact.source, phone: a.company_contact.phone, phone_type: "switchboard", phone_source: a.company_contact.source });
-  return list.slice(0, 4);
+  return list.slice(0, 22); // up to 20 people (the organiser's setting) plus the company's own address
 }
 
 /** A person confirms the contact: unlocks outreach for an unverified address. */
@@ -277,6 +283,36 @@ export async function queueOffer(companyId: string) {
   if (q.ok) await L.log("A2", companyId, "offer_drafted", `Priced offer to ${ct.full_name} waiting for approval`);
   else await L.log("A2", companyId, "offer_refused", `${q.reason} ${(q.problems || []).join("; ")}`);
   return q;
+}
+
+/** Writing to many people at one company, a few at a time: the next WAVE people with a usable email who have not
+ * been written to yet, best placed first (the primary leads). Twenty emails landing at once read as spam and get
+ * forwarded to one inbox anyway; waves keep each one personal. Every draft still waits for approval. */
+const WAVE = 3;
+export async function queueWave(companyId: string) {
+  const e = await needEvent();
+  const d = await db();
+  const co = await company(companyId);
+  if (!co.draft_body) throw new Error("No offer drafted yet. Run the analysis first.");
+  const people = await d.q(`SELECT * FROM contacts c WHERE company_id=$1 AND status <> 'erased' AND email IS NOT NULL AND email <> ''
+      AND (email_status IN ('VERIFIED','CORROBORATED') OR reviewed_at IS NOT NULL)
+      AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.contact_id=c.id AND m.sequence='cold' AND m.step=0 AND m.status <> 'cancelled')
+    ORDER BY is_primary DESC, COALESCE(relevance,0) DESC LIMIT ${WAVE}`, [companyId]);
+  if (!people.length) return { ok: false, reason: "Everyone with a usable email at this company has been written to.", queued: 0, people: [] as string[] };
+  const done: string[] = [];
+  let full = false;
+  for (const ct of people) {
+    const body = String(co.draft_body).replace(/^(Hi|Hello|Dear)\s+[^,\n]+,/i, `Hi ${firstName(ct.full_name)},`);
+    const q = await L.queue({ key: `${ct.id}:cold:0`, contact_id: ct.id, company_id: companyId, sequence: "cold", step: 0, subject: co.draft_subject || `${co.name} x ${e.name}`, body: A.withSignature(body, e) });
+    if (q.ok) done.push(ct.full_name);
+    else if (q.reason === "wave_full") full = true;
+    else await L.log("A2", companyId, "offer_refused", `${ct.full_name}: ${q.reason} ${(q.problems || []).join("; ")}`);
+  }
+  const left = num((await d.q(`SELECT COUNT(*) AS n FROM contacts c WHERE company_id=$1 AND status <> 'erased' AND email IS NOT NULL AND email <> ''
+      AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.contact_id=c.id AND m.sequence='cold' AND m.step=0 AND m.status <> 'cancelled')`, [companyId]))[0]?.n);
+  if (done.length) await L.log("A2", companyId, "offer_drafted", `Offer to ${done.join(", ")} waiting for approval${left ? `; ${left} more people for the next wave` : ""}`);
+  const reason = done.length ? "" : full ? "3 people here are still in their email sequence. The next 3 can be written to once it ends without a reply." : "No draft could be prepared; see Activity for why.";
+  return { ok: done.length > 0, queued: done.length, people: done, left, reason };
 }
 
 export async function setContactEmail(contactId: string, email: string) {

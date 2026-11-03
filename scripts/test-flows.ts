@@ -193,5 +193,13 @@ let fails = 0; const eq = (n: string, g: any, w: any) => { const ok = JSON.strin
 
   eq("no AI provider was called", aiCalls, 0);
   eq("company enrich never asks for 'people' (megabytes)", [enrichFields.length > 0, enrichFields.includes("people")], [true, false]);
+  // Waves: many people at one company are written to 3 at a time, best placed first, never twice.
+  await d.q(`INSERT INTO companies (id, name, domain, stage, draft_subject, draft_body, updated_at) SELECT 'wave-co', 'Wave Foods', 'wavefoods.in', 'CONTACT_READY', draft_subject, draft_body, updated_at FROM companies WHERE id='acme-in'`);
+  const people = [["Nina Rao", 90, 1], ["Asha Iyer", 70, 0], ["Dev Menon", 60, 0], ["Kabir Sen", 50, 0], ["Lata Jain", 40, 0]] as const;
+  for (const [nm, rel, prim] of people) await d.q(`INSERT INTO contacts (id, company_id, full_name, position, email, email_status, status, is_primary, kind, relevance, created_at) VALUES ($1,'wave-co',$2,'Brand Manager',$3,'VERIFIED','active',$4,'alternative',$5,$6)`, [`wave-co--${nm.toLowerCase().replace(" ", "-")}`, nm, `${nm.toLowerCase().replace(" ", ".")}@wavefoods.in`, prim, rel, new Date().toISOString()]);
+  const w1: any = await F.queueWave("wave-co"), w2: any = await F.queueWave("wave-co"), w3: any = await F.queueWave("wave-co");
+  eq("waves: the 3 best first (primary leads); the next 3 wait until that wave has run its course", [w1.queued, w1.people[0], w1.left, w2.queued, w3.queued], [3, "Nina Rao", 2, 0, 0]);
+  const S = await import("../src/lib/sponsor-categories");
+  eq("seats per category map to real industry labels", [S.categoryById("food")?.industries.includes("Food and Beverage Manufacturing"), S.categoryById("fintech")?.industries.includes("Banking")], [true, true]);
   console.log(fails ? `${fails} FAILED` : "ALL PASS"); process.exit(fails ? 1 : 0);
 })().catch((e) => { console.error("ERROR", e); process.exit(1); });

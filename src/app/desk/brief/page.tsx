@@ -154,17 +154,41 @@ function Prefs() {
   const e = data.event;
   const [cats, setCats] = useState<string[]>(e.sponsor_categories || []);
   const [brands, setBrands] = useState<string>((e.wanted_brands || []).join(", "));
-  const dirty = JSON.stringify(cats) !== JSON.stringify(e.sponsor_categories || []) || brands !== (e.wanted_brands || []).join(", ");
+  const [counts, setCounts] = useState<Record<string, number>>(e.category_counts || {});
+  const [people, setPeople] = useState<number>(e.contacts_per_company || 2);
+  const n = (id: string) => counts[id] || 2;
+  const total = cats.reduce((s, id) => s + n(id), 0);
+  const dirty = JSON.stringify(cats) !== JSON.stringify(e.sponsor_categories || []) || brands !== (e.wanted_brands || []).join(", ") || cats.some((id) => n(id) !== (e.category_counts || {})[id]) || people !== (e.contacts_per_company || 2);
   return (
-    <Section title="Looking for" hint={cats.length ? "Discovery searches only these." : "None picked: the desk chooses."}>
+    <Section title="Looking for" hint={cats.length ? `${total} sponsors: discovery fills each category to its number.` : "None picked: the desk chooses."}>
       <div className="flex flex-wrap gap-1.5">
         {SPONSOR_CATEGORIES.map((c) => {
           const on = cats.includes(c.id);
-          return <button key={c.id} type="button" aria-pressed={on} title={c.hint} onClick={() => setCats(on ? cats.filter((x) => x !== c.id) : [...cats, c.id])} className={cn("rounded-md border px-2.5 py-1 text-sm transition", on ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{c.label}</button>;
+          return (
+            <span key={c.id} className={cn("inline-flex items-center overflow-hidden rounded-md border text-sm transition", on ? "border-primary" : "")}>
+              <button type="button" aria-pressed={on} title={c.hint} onClick={() => setCats(on ? cats.filter((x) => x !== c.id) : [...cats, c.id])} className={cn("px-2.5 py-1", on ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{c.label}</button>
+              {on && (
+                <span className="inline-flex items-center tabular-nums">
+                  <button type="button" aria-label={`Fewer ${c.label}`} className="px-1.5 py-1 text-muted-foreground hover:text-foreground" onClick={() => setCounts({ ...counts, [c.id]: Math.max(1, n(c.id) - 1) })}>−</button>
+                  <span className="min-w-[1.25rem] text-center" aria-label={`${n(c.id)} sponsors`}>{n(c.id)}</span>
+                  <button type="button" aria-label={`More ${c.label}`} className="px-1.5 py-1 text-muted-foreground hover:text-foreground" onClick={() => setCounts({ ...counts, [c.id]: Math.min(10, n(c.id) + 1) })}>+</button>
+                </span>
+              )}
+            </span>
+          );
         })}
       </div>
       <Input value={brands} onChange={(x) => setBrands(x.target.value)} placeholder="Brands you want, comma separated" aria-label="Brands you want" />
-      {dirty && <Button size="sm" disabled={!!busy || !can("operator")} onClick={() => act("prefs", { prefs: { categories: cats, brands: brands.split(",").map((b) => b.trim()).filter(Boolean) } }, "Saving preferences")}>Save</Button>}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+        <span>People to find per company</span>
+        <span className="inline-flex items-center rounded-md border tabular-nums">
+          <button type="button" aria-label="Fewer people" className="px-2 py-1 text-muted-foreground hover:text-foreground" onClick={() => setPeople(Math.max(1, people - 1))}>−</button>
+          <span className="min-w-[1.5rem] text-center">{people}</span>
+          <button type="button" aria-label="More people" className="px-2 py-1 text-muted-foreground hover:text-foreground" onClick={() => setPeople(Math.min(20, people + 1))}>+</button>
+        </span>
+        <span className="text-xs text-muted-foreground">About 2 Crustdata credits each. Emails go 3 at a time.</span>
+      </div>
+      {dirty && <Button size="sm" disabled={!!busy || !can("operator")} onClick={() => act("prefs", { prefs: { categories: cats, people, counts: Object.fromEntries(cats.map((id) => [id, n(id)])), brands: brands.split(",").map((b) => b.trim()).filter(Boolean) } }, "Saving preferences")}>Save</Button>}
     </Section>
   );
 }

@@ -41,7 +41,11 @@ const B1 = "Hi Priya,\n\nOne more option: a smaller workshop slot, measured on s
   const bad = await L.queue({ key: "c1:cold:0", contact_id: "c1", company_id: "acme", sequence: "cold", step: 0, subject: "Acme hiring challenge", body: "Hi {{first_name}},\n\nOffer.\n\nBest regards,\nA" });
   eq("lint blocks placeholder + postal", [bad.reason, (bad.problems || []).length >= 2], ["lint", true]);
   eq("queue ok", (await L.queue({ key: "c1:cold:0", contact_id: "c1", company_id: "acme", sequence: "cold", step: 0, subject: "Acme hiring challenge", body: B0, scheduled_for: "2026-01-01T10:00" })).ok, true);
-  eq("one thread per company", (await L.queue({ key: "c2:cold:0", contact_id: "c2", company_id: "acme", sequence: "cold", step: 0, subject: "Acme hiring", body: B0 })).reason, "one_live_thread_per_company");
+  await d.q(`INSERT INTO companies (id, name, stage, updated_at) VALUES ('gamma','gamma','QUALIFIED',$1)`, [nowIso()]);
+  for (const id of ["g1", "g2", "g3", "g4"]) await d.q(`INSERT INTO contacts (id, company_id, email, full_name, status, is_primary, created_at) VALUES ($1,'gamma',$2,$1,'active',0,$3)`, [id, `${id}@gamma.com`, nowIso()]);
+  const wave = [];
+  for (const id of ["g1", "g2", "g3", "g4"]) wave.push((await L.queue({ key: `${id}:cold:0`, contact_id: id, company_id: "gamma", sequence: "cold", step: 0, subject: "Gamma hiring challenge", body: B0 })).reason || "ok");
+  eq("one wave per company: 3 people at once, the 4th waits", wave, ["ok", "ok", "ok", "wave_full"]);
   eq("max 3 cold emails", (await L.queue({ key: "c1:cold:3", contact_id: "c1", company_id: "acme", sequence: "cold", step: 3, subject: "x y", body: B1 })).reason, "cold_step_max_2");
   eq("agent cannot approve step 0", (await L.approve("c1:cold:0", "agent")).reason, "needs_human_approver");
   eq("unknown approver refused", (await L.approve("c1:cold:0", "Mallory")).reason, "unknown_approver");

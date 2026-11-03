@@ -5,7 +5,7 @@ import { fixDashes } from "./lint";
 import { verifySources, type CheckedSource } from "./verify";
 import * as CD from "./crustdata";
 import { scoreContact, sponsorKind } from "./contacts";
-import { industriesFor } from "./sponsor-categories";
+import { categoryById, industriesFor } from "./sponsor-categories";
 import * as PS from "./past-sponsors";
 import { chat, hasSarvam } from "./sarvam";
 
@@ -22,7 +22,7 @@ export type EventProfile = {
   postal_address: string;
   event_type?: EventType; reach?: number; audience_short?: string; pricing_basis?: string;
   /** Organiser preferences from the brief composer: sponsor category ids and brands they already have in mind. */
-  sponsor_categories?: string[]; wanted_brands?: string[];
+  sponsor_categories?: string[]; wanted_brands?: string[]; category_counts?: Record<string, number>; contacts_per_company?: number;
   /** Past sponsors with where each was found, the Instagram handle, follower count and a hint when links are missing. */
   instagram?: string; past_sponsor_list?: PS.PastSponsor[]; social_followers?: number; links_hint?: string; past_sponsor_checked?: string[];
   /** Days the event runs, parsed from the dates; more days means more activation inventory to sell. */
@@ -520,14 +520,19 @@ export async function discover(e: EventProfile, count: number, exclude: string[]
   const plan = scalePlan(e);
   const country = process.env.SD_COUNTRY || "IND";
   const iso = (days: number) => new Date(Date.now() - days * 86400e3).toISOString().slice(0, 10);
-  const industries = e.sponsor_categories?.length ? industriesFor(e.sponsor_categories) : DISCOVER_INDUSTRIES[type];
+  // Seats per category set by the organiser ("3 food and beverages, 2 banking"): each category is searched on its own
+  // and filled to its number, so the list matches the partner slots the event actually sells.
+  const seats = Object.entries(e.category_counts || {})
+    .map(([id, n]) => [id, Math.max(0, Math.min(10, Math.round(Number(n) || 0)))] as [string, number])
+    .filter(([id, n]) => n > 0 && categoryById(id));
+  const industries = seats.length ? industriesFor(seats.map(([id]) => id)) : e.sponsor_categories?.length ? industriesFor(e.sponsor_categories) : DISCOVER_INDUSTRIES[type];
   const common: CD.Filter[] = [
     { field: "locations.country", type: "=", value: country },
     { field: "basic_info.primary_domain", type: "is_not_null", value: null },
   ];
   if (exclude.length) common.push({ field: "basic_info.name", type: "not_in", value: exclude.slice(0, 500) });
   const sizeRange = (min: number, max: number | null): CD.Filter[] => [{ field: "headcount.total", type: "=>", value: min }, ...(max ? [{ field: "headcount.total", type: "=<", value: max } as CD.Filter] : [])];
-  const want = Math.min(Math.max(count, 3), 25);
+  const want = seats.length ? Math.min(seats.reduce((s, [, n]) => s + n, 0), 40) : Math.min(Math.max(count, 3), 25);
   const per = (p: "early" | "growth" | "established") => Math.max(plan.mix[p] > 0.08 ? 3 : 0, Math.ceil(want * plan.mix[p] * 1.6));
   // Three pools, each searched on its own so one kind of company cannot crowd out the others.
   const pools: { pool: "early" | "growth" | "established"; filters: CD.Filter[]; sorts: { field: string; order: "asc" | "desc" }[] }[] = [
@@ -543,14 +548,20 @@ export async function discover(e: EventProfile, count: number, exclude: string[]
       return (await CD.searchCompanies({ op: "and", conditions: filters }, n, trace).catch(() => ({ companies: [] as any[] }))).companies; // a sort this plan does not support
     }
   };
-  for (const p of pools) {
+  if (seats.length) {
+    // One search per category, three candidates per seat, sized to the event; the rules and the strategist then pick.
+    for (const [id, n] of seats) {
+      const got = await search([...common, ...sizeRange(Math.max(plan.min_hc, 10), plan.max_hc), { field: "taxonomy.professional_network_industry", type: "in", value: categoryById(id)!.industries }], n * 3, [{ field: "headcount.total", order: "desc" }]);
+      rows.push(...got.map((c) => ({ c, pool: (Number(g(c, "headcount.total") || 0) >= Math.max(plan.sweet[0], 200) ? "established" : Number(g(c, "headcount.growth_percent.6m") || 0) >= 8 ? "growth" : "early") as Pool })));
+    }
+  } else for (const p of pools) {
     const n = per(p.pool);
     if (!n) continue;
     const got = await search([...common, ...p.filters, { field: "taxonomy.professional_network_industry", type: "in", value: industries }], n, p.sorts);
     rows.push(...got.map((c) => ({ c, pool: p.pool })));
   }
   // Too few in the chosen industries: widen to every industry, still sized to the event.
-  if (new Set(rows.map((r) => r.c?.basic_info?.name)).size < want) {
+  if (!seats.length && new Set(rows.map((r) => r.c?.basic_info?.name)).size < want) {
     const got = await search([...common, ...sizeRange(plan.min_hc, plan.max_hc), { op: "or", conditions: [{ field: "funding.last_fundraise_date", type: "=>", value: iso(365) }, { field: "headcount.growth_percent.6m", type: "=>", value: 5 }] }], want * 2, [{ field: "headcount.total", order: "desc" }]);
     rows.push(...got.map((c) => ({ c, pool: (Number(g(c, "headcount.total") || 0) >= Math.max(plan.sweet[0], 200) ? "established" : "growth") as Pool })));
   }
@@ -564,7 +575,8 @@ export async function discover(e: EventProfile, count: number, exclude: string[]
     } catch { /* keep the other pools */ }
   }
   // Now: brands in this season's news for sponsoring events like this one, confirmed as real companies by Crustdata.
-  const trending = await trendingSponsors(e, type, trace);
+  // With seats per category, only companies in those categories can be kept, so the news and peer pools are skipped.
+  const trending = seats.length ? [] : await trendingSponsors(e, type, trace);
   if (trending.length) {
     try {
       const got = await CD.searchCompanies({ op: "and", conditions: [...common, { op: "or", conditions: trending.map((n) => ({ field: "basic_info.name", type: "[.]", value: n })) }] }, trending.length * 2, trace);
@@ -577,7 +589,7 @@ export async function discover(e: EventProfile, count: number, exclude: string[]
   // a second finds peers in the same industries at a similar size.
   const pastNames = [...new Set((e.past_sponsor_list || []).map((s) => s.name).filter((n) => n.length >= 3))].slice(0, 15);
   const peerInd: string[] = [];
-  if (pastNames.length >= 4) {
+  if (pastNames.length >= 4 && !seats.length) {
     try {
       const known = (await CD.searchCompanies({ op: "and", conditions: [{ field: "locations.country", type: "=", value: country }, { op: "or", conditions: pastNames.map((n) => ({ field: "basic_info.name", type: "[.]", value: n })) }] }, pastNames.length * 2, trace)).companies;
       const tally: Record<string, number> = {};
@@ -683,6 +695,22 @@ export async function discover(e: EventProfile, count: number, exclude: string[]
       for (const k of Object.keys(perPool)) delete perPool[k];
       for (const x of companies) perPool[x.pool] = (perPool[x.pool] || 0) + 1;
     }
+  }
+  // Seats per category win over everything above: each category gets exactly its number, best first (the
+  // strategist's picks lead, then the rule score). A category with too few candidates says so in the plan.
+  if (seats.length) {
+    const catOf = (x: any) => seats.find(([id]) => categoryById(id)!.industries.includes(String(x.industry || "")))?.[0];
+    const order = [...companies, ...ranked.filter((x) => !companies.includes(x))];
+    const picked: any[] = [];
+    for (const [id, n] of seats) {
+      const got = order.filter((x) => catOf(x) === id).slice(0, n);
+      picked.push(...got);
+      if (got.length < n) plan.thinking.push(`${categoryById(id)!.label}: found ${got.length} of ${n} asked for.`);
+    }
+    companies.splice(0, companies.length, ...picked);
+    for (const k of Object.keys(perPool)) delete perPool[k];
+    for (const x of companies) perPool[x.pool] = (perPool[x.pool] || 0) + 1;
+    plan.thinking.push(`Seats you set: ${seats.map(([id, n]) => `${n} ${categoryById(id)!.label.toLowerCase()}`).join(", ")}.`);
   }
   const mixText = (Object.keys(POOL_LABEL) as Pool[]).filter((p) => perPool[p]).map((p) => `${perPool[p]} ${POOL_LABEL[p]}`).join(", ");
   plan.thinking.push(`Searched ${pools.filter((p) => per(p.pool)).length + (area.length ? 1 : 0)} pools${trending.length ? ` plus this season's sponsorship news (${trending.length} brands mentioned)` : ""}, looked at ${ranked.length} usable companies, kept ${companies.length}: ${mixText}.${hot.length ? ` Funding is flowing into ${hot.join(", ")} right now.` : ""}`);
@@ -837,8 +865,10 @@ export async function analyze(e: EventProfile, company: { name: string; domain?:
   const offer = pickOffer(cls, type, hc, hiringUp, digital);
   const kind = sponsorKind(SEGMENT[cls], offer.model);
   const words = [...new Set([...TITLE_WORDS[kind], ...(offer.model === "hiring" ? ["talent acquisition", "campus", "university relations", "employer brand"] : [])])];
+  // How many people to find per company (organiser's setting, 2 by default, up to 20): more people, more ways in.
+  const perCo = Math.max(1, Math.min(20, Math.round(Number(e.contacts_per_company) || 2)));
   let people: any[] = [];
-  if (!dropReason) { try { people = await CD.searchPeople(cid, coName, words, 12, trace); } catch (err: any) { signals.push({ claim: `People search failed: ${String(err.message).slice(0, 120)}`, source: "crustdata" }); } }
+  if (!dropReason) { try { people = await CD.searchPeople(cid, coName, words, Math.min(40, Math.max(12, perCo * 2)), trace); } catch (err: any) { signals.push({ claim: `People search failed: ${String(err.message).slice(0, 120)}`, source: "crustdata" }); } }
   const orgWords = `${e.organizer} ${e.name}`.toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 3 && !/^(the|team|club|cell|fest|summit|society|college|event)$/.test(w));
   const coWord = (coName.toLowerCase().match(/[a-z]{4,}/) || [""])[0].replace(/s$/, "");
   const cands = people.map((p) => {
@@ -855,8 +885,8 @@ export async function analyze(e: EventProfile, company: { name: string; domain?:
     const moved = (g(p, "experience.employment_details.current") || []).find((x: any) => x !== cur && x.crustdata_company_id && cid && Number(x.crustdata_company_id) !== cid && String(x.start_date || "") > String(cur.start_date || "0"));
     return { name: String(g(p, "basic_profile.name") || ""), title, start: String(cur.start_date || "").slice(0, 10), url, alum, schools, moved: moved ? `${moved.title} at ${moved.name} since ${String(moved.start_date || "").slice(0, 7)}` : "", hasEmail: !!g(p, "contact.has_business_email"), prelim: prelim.score + (g(p, "contact.has_business_email") ? 6 : 0) - (moved ? 60 : 0) - channel - junior };
   }).filter((x) => x.name && x.title && !(coWord && x.name.toLowerCase().replace(/[^a-z]/g, "").includes(coWord))).sort((a, b) => b.prelim - a.prelim); // a page named after the company is not a person
-  const top = cands.slice(0, 2);
-  // Business emails only for the two best people (2 credits each). Keep an address only if it belongs to THIS company.
+  const top = cands.slice(0, perCo);
+  // Business emails only for the people kept (about 2 credits each). Keep an address only if it belongs to THIS company.
   let mails: Record<string, { email: string; status: string; company_id?: number }[]> = {};
   if (top.some((t) => t.url)) { try { mails = await CD.businessEmails(top.map((t) => t.url), trace); } catch { mails = {}; } }
   const contacts: FoundContact[] = top.map((t, i) => {

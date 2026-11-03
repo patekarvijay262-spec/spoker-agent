@@ -187,7 +187,11 @@ function CompanyBody({ c }: { c: Any }) {
         <TabsContent value="people" className="space-y-4 p-5 sm:p-8">
           {contacts.length ? [...contacts].sort((a: Any, b: Any) => (b.is_primary - a.is_primary) || ((b.relevance ?? -1) - (a.relevance ?? -1))).map((ct: Any) => <ContactCard key={ct.id} ct={ct} co={c} />)
             : <p className="text-sm text-muted-foreground">No decision maker yet. Score the company to find the right people.</p>}
-          <Button variant="outline" disabled={!!busy} onClick={() => act("rediscover", { company_id: c.id }, `Rediscovering people at ${c.name}`)}><RefreshCw className="size-4" />Find people again</Button>
+          <div className="flex flex-wrap gap-2">
+            {contacts.filter((ct: Any) => ct.email).length > 1 && <Button disabled={!!busy} onClick={() => act("next_wave", { company_id: c.id }, "Drafting the offer for the next 3 people")}>Write to the next 3</Button>}
+            <Button variant="outline" disabled={!!busy} onClick={() => act("rediscover", { company_id: c.id }, `Rediscovering people at ${c.name}`)}><RefreshCw className="size-4" />Find people again</Button>
+          </div>
+          {contacts.length > 3 && <p className="text-xs text-muted-foreground">Emails go out 3 people at a time, best placed first, so each one stays personal. Every draft waits for your approval.</p>}
         </TabsContent>
         <TabsContent value="timeline" className="p-5 sm:p-8"><Timeline c={c} /></TabsContent>
       </Tabs>
