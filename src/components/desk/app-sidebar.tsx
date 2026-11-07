@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { cn } from "cn";
 import {
-  Activity, Bot, Building2, CalendarClock, ClipboardPen, Handshake, Inbox, KanbanSquare, LayoutDashboard, LogOut, Megaphone, Send, Settings, Users,
+  Activity, Bot, Building2, CalendarClock, ClipboardPen, Handshake, Inbox, KanbanSquare, LayoutDashboard, LogOut, Megaphone, PenLine, Send, Settings, Users,
 } from "lucide-react";
 
 import {
@@ -26,24 +26,29 @@ export function AppSidebar() {
   const review = (data?.contacts || []).filter((c: Any) => c.is_primary && !c.reviewed_at && ["UNVERIFIED", "UNAVAILABLE", "OUTDATED"].includes(c.email_status)).length;
   const live = busy ? OP_AGENT[busy.op] : progress ? "A1" : "";
 
-  // `attention` items wait on a person: their count is amber. Everything else stays neutral.
-  const groups: { label?: string; items: { title: string; url: string; icon: Any; badge?: number; attention?: boolean; live?: boolean }[] }[] = [
+  // The organiser's own order: the event, the companies, their draft, then sending. Any step can come first, so
+  // nothing here nags; counts are plain numbers, never alarms.
+  void review;
+  const groups: { label?: string; items: { title: string; url: string; icon: Any; badge?: number; live?: boolean }[] }[] = [
     { items: [
-      { title: "Dashboard", url: "/desk", icon: LayoutDashboard },
-      { title: "Event brief", url: "/desk/brief", icon: ClipboardPen, badge: e && !e.floor_locked ? 1 : 0, attention: true },
-      { title: "Companies", url: "/desk/companies", icon: Building2 },
-      { title: "Pipeline", url: "/desk/pipeline", icon: KanbanSquare },
-      { title: "Agents", url: "/desk/agents", icon: Bot, live: !!live },
+      { title: "Home", url: "/desk", icon: LayoutDashboard },
     ] },
-    { label: "Needs you", items: [
-      { title: "Outbox", url: "/desk/outbox", icon: Send, badge: drafts, attention: true },
-      { title: "Inbox", url: "/desk/inbox", icon: Inbox, badge: decisions, attention: true },
-      { title: "People", url: "/desk/people", icon: Users, badge: review, attention: true },
+    { label: "Your sponsorship", items: [
+      { title: "Event", url: "/desk/brief", icon: ClipboardPen },
+      { title: "Companies", url: "/desk/companies", icon: Building2, live: !!live },
+      { title: "Your draft", url: "/desk/draft", icon: PenLine },
+      { title: "Send", url: "/desk/outbox", icon: Send, badge: drafts },
+      { title: "Replies", url: "/desk/inbox", icon: Inbox, badge: decisions },
     ] },
-    { label: "Deals", items: [
+    { label: "After a yes", items: [
       { title: "Meetings", url: "/desk/meetings", icon: CalendarClock },
       { title: "Deals and MOUs", url: "/desk/deals", icon: Handshake },
       { title: "Sponsor updates", url: "/desk/sponsors", icon: Megaphone },
+    ] },
+    { label: "More", items: [
+      { title: "People", url: "/desk/people", icon: Users },
+      { title: "Pipeline", url: "/desk/pipeline", icon: KanbanSquare },
+      { title: "Agents", url: "/desk/agents", icon: Bot },
     ] },
   ];
   const isOn = (url: string) => (url === "/desk" ? path === "/desk" : path?.startsWith(url));
@@ -79,7 +84,7 @@ export function AppSidebar() {
                       {it.live && <span className="ml-auto size-1.5 animate-pulse rounded-full bg-foreground group-data-[collapsible=icon]:hidden" aria-label="An agent is working" />}
                     </SidebarMenuButton>
                     {!!it.badge && (
-                      <SidebarMenuBadge className={cn("num", it.attention && "text-warning")}>{it.badge}</SidebarMenuBadge>
+                      <SidebarMenuBadge className="num text-sidebar-foreground/60">{it.badge}</SidebarMenuBadge>
                     )}
                   </SidebarMenuItem>
                 ))}

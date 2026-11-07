@@ -63,11 +63,11 @@ let fails = 0; const eq = (n: string, g: any, w: any) => { const ok = JSON.strin
   eq("A0 reads a JavaScript-built sponsors page through the rendered fetch", (p.past_sponsor_list || []).filter((s: any) => s.source === "website").map((s: any) => `${s.name}/${s.role}`), ["Delta Capital/Title Sponsor", "Zeta Foods/Title Sponsor"]);
   await setSetting("approvers", "Rishiraaj");
   await setSetting("verified_only", "0"); // these flows check the unverified paths too; verified-only is tested at the end
-  let blocked = ""; try { await F.runDiscover(5); } catch (e: any) { blocked = e.message; }
-  eq("A1 refuses before floor is locked", blocked.startsWith("Lock the floor"), true);
+  // ---- A1: finding companies never waits on pricing; the suggested floor is used until the organiser changes it.
+  const firstFind = await F.runDiscover(5);
+  eq("A1 discover via Crustdata, unsafe category skipped", firstFind.added, ["acme-in"]);
+  eq("A1 an unlocked floor is set to the suggested one, not a blocker", [(await F.getEvent())?.floor_locked, (await F.getEvent())?.floor_inr === p.floor_inr], [true, true]);
   await F.lockFloor(200000, "Rishiraaj");
-  // ---- A1
-  eq("A1 discover via Crustdata, unsafe category skipped", (await F.runDiscover(5)).added, ["acme-in"]);
   const disc = (await d.q(`SELECT reasons FROM companies WHERE id='acme-in'`))[0];
   eq("A1 keeps the Crustdata id for analysis", JSON.parse(disc.reasons).crustdata_company_id, 101);
   // ---- A1 + A2
@@ -207,5 +207,21 @@ let fails = 0; const eq = (n: string, g: any, w: any) => { const ok = JSON.strin
   await d.q(`INSERT INTO companies (id, name, domain, stage, reasons, updated_at) SELECT 'vo-co', 'Acme Fintech Two', 'acme.in', 'PROSPECT', reasons, updated_at FROM companies WHERE id='acme-in'`);
   const vo: any = await F.runAnalyze("vo-co");
   eq("verified only: unverified people are not kept", [vo.contact, (await d.q(`SELECT COUNT(*) AS n FROM contacts WHERE company_id='vo-co'`))[0].n, (await d.q(`SELECT COUNT(*) AS n FROM exceptions WHERE company_id='vo-co' AND kind='no_contact'`))[0].n], [false, 0, 1]);
+  // Your own draft, fitted to each company and person; unknown blanks are refused; waiting drafts can be refitted.
+  const T = await import("../src/lib/template");
+  eq("draft: blanks filled per person, empty ones leave no gap", T.fillTemplate("Hi {first_name}, {company} x {event}. {why_them}", { full_name: "Priya Shah", company: "Acme", event: "E-Summit 2027" }), "Hi Priya, Acme x E-Summit 2027.");
+  let typo = ""; try { await F.saveTemplate({ subject: "Hi", body: "Hi {frist_name}" }, "Rishiraaj"); } catch (e: any) { typo = e.message; }
+  eq("draft: a typo in a blank is refused with its name", /\{frist_name\}/.test(typo), true);
+  await F.saveTemplate({ subject: "{company} x {event}", body: "Hi {first_name},\n\nWe would love {company} at {event}. {why_them}\n\nCould we talk this week?" }, "Rishiraaj");
+  await d.q(`INSERT INTO companies (id, name, domain, stage, draft_subject, draft_body, angle, tier, price_range, updated_at) SELECT 'tpl-co', 'Template Foods', 'tplfoods.in', 'CONTACT_READY', draft_subject, draft_body, 'Students snack all night.', 'Gold', 'INR 2L-4L', updated_at FROM companies WHERE id='acme-in'`);
+  await d.q(`INSERT INTO contacts (id, company_id, full_name, position, email, email_status, status, is_primary, kind, relevance, created_at) VALUES ('tpl-co--meera-das','tpl-co','Meera Das','Brand Lead','meera.das@tplfoods.in','VERIFIED','active',1,'primary',80,$1)`, [new Date().toISOString()]);
+  const tw: any = await F.queueWave("tpl-co");
+  const tm = (await d.q(`SELECT subject, body FROM messages WHERE contact_id='tpl-co--meera-das'`))[0];
+  eq("draft: the queued email is the organiser's draft, fitted and signed", [tw.queued, tm?.subject, /^Hi Meera,/.test(tm?.body || ""), /Template Foods at E-Summit 2027\. Students snack all night\./.test(tm?.body || ""), /400076/.test(tm?.body || "")], [1, "Template Foods x E-Summit 2027", true, true, true]);
+  // Not happy with the list: untouched companies are set aside, contacted ones stay.
+  const rc: any = await F.replaceCompanies("Rishiraaj");
+  eq("find different: untouched companies set aside, never suggested again", [rc.removed > 0, (await d.q(`SELECT stage FROM companies WHERE id='tpl-co'`))[0].stage], [true, "DISQUALIFIED"]);
+  const ap: any = await F.addPastSponsors(["Red Bull", "SBI"], "Rishiraaj");
+  eq("past sponsors typed in are added without a web search", [ap.added, ((await F.getEvent())?.past_sponsor_list || []).some((s: any) => s.name === "SBI" && s.source === "organiser")], [2, true]);
   console.log(fails ? `${fails} FAILED` : "ALL PASS"); process.exit(fails ? 1 : 0);
 })().catch((e) => { console.error("ERROR", e); process.exit(1); });

@@ -58,6 +58,9 @@ async function run(b: any, me: User, origin: string) {
     case "brief": return F.runBrief(String(b.line || ""), b.sender || {}, String(b.answers || ""), b.dry === true, b.prefs || undefined, b.links || undefined);
     case "past_sponsors": return F.refreshPastSponsors(b.links || {}, who);
     case "prefs": return F.setPrefs(b.prefs || {}, who);
+    case "replace_companies": return F.replaceCompanies(who);
+    case "add_past_sponsors": return F.addPastSponsors((Array.isArray(b.names) ? b.names : []).map(String), who);
+    case "save_template": return F.saveTemplate({ subject: String(b.subject || ""), body: String(b.body || "") }, who, !!b.apply);
     case "lock_floor": {
       const floor = Number(b.floor);
       if (!Number.isFinite(floor) || floor <= 0) throw new Error("The floor must be a positive amount in rupees.");

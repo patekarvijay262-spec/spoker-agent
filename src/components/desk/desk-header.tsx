@@ -18,8 +18,8 @@ import { ThemeSwitcher } from "./theme-switcher";
 import { useVoiceControl, VOICE_EXAMPLES, VoiceButton } from "./voice-control";
 
 const PAGES = [
-  ["Dashboard", "/desk"], ["Event brief", "/desk/brief"], ["Companies", "/desk/companies"], ["Pipeline", "/desk/pipeline"], ["Agents", "/desk/agents"],
-  ["Outbox", "/desk/outbox"], ["Inbox", "/desk/inbox"], ["People", "/desk/people"], ["Meetings", "/desk/meetings"], ["Deals and MOUs", "/desk/deals"],
+  ["Home", "/desk"], ["Event", "/desk/brief"], ["Your draft", "/desk/draft"], ["Companies", "/desk/companies"], ["Pipeline", "/desk/pipeline"], ["Agents", "/desk/agents"],
+  ["Send", "/desk/outbox"], ["Replies", "/desk/inbox"], ["People", "/desk/people"], ["Meetings", "/desk/meetings"], ["Deals and MOUs", "/desk/deals"],
   ["Sponsor updates", "/desk/sponsors"], ["Settings", "/desk/settings"],
 ];
 const TITLES: Record<string, string> = { ...Object.fromEntries(PAGES.map(([t, u]) => [u, t])), "/desk/admin": "Activity" };

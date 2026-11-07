@@ -31,22 +31,26 @@ type Desk = {
   me: Any;
   can: (r: "readonly" | "operator" | "approver" | "admin") => boolean;
   autopilot: (count: number) => Promise<void>;
+  findDifferent: () => Promise<void>;
 };
 
 /** One short line when a major task finishes; small edits stay quiet. */
 function doneMessage(op: string, r: Any): [string, string?] | null {
   const n = (x: Any) => (Array.isArray(x) ? x.length : Number(x) || 0);
   switch (op) {
-    case "brief": return r?.clarify ? null : ["Event packaged", "Tiers, floor and audience are ready. Lock the floor to start finding sponsors."];
+    case "brief": return r?.clarify ? null : ["Event packaged", "Prices and audience are ready. Find companies whenever you like."];
     case "prefs": return ["Preferences saved"];
     case "lock_floor": return ["Floor locked", "You can now find sponsors."];
     case "discover": return [`Found ${n(r?.added)} companies`, "Scoring them next."];
     case "analyze": return r?.dropped ? ["Company dropped", "It did not fit this event."] : [`Scored: ${r?.priority || "done"}`, r?.contact ? "Verified people found." : "No verified person yet."];
     case "rediscover": return ["People search finished"];
     case "past_sponsors": return ["Past sponsors updated"];
+    case "add_past_sponsors": return [`Added ${r?.added || 0} past sponsors`, "They set the level for the next search."];
     case "schedule": return ["Meeting times sent for approval"];
     case "confirm_meeting": return ["Meeting booked"];
     case "send_mou": return ["MOU sent"];
+    case "save_template": return r?.updated ? [`Draft saved and used for ${r.updated} waiting ${r.updated === 1 ? "email" : "emails"}`, r.failed?.length ? `${r.failed.length} could not be rewritten: ${r.failed[0]}` : undefined] : ["Draft saved", "New emails will use it."];
+    case "replace_companies": return [`Set aside ${r?.removed || 0} companies`, "Finding different ones now."];
     case "prepare_outreach": case "next_wave": return r?.people?.length ? [`Drafted for ${r.people.join(", ")}`, "Waiting in the Outbox for your approval."] : ["Offer drafted", "Waiting in the Outbox for your approval."];
     case "approve": return ["Approved"];
     case "approve_many": return [`Approved ${n(r?.results)}`];
@@ -118,8 +122,14 @@ export function DeskProvider({ children }: { children: ReactNode }) {
       await load();
     }
     setProgress(null);
-    flash("Autopilot finished", `${ids.length} companies researched. Offers are waiting in the Outbox.`, "success");
+    flash("Companies ready", `${ids.length} researched, with people and emails. Drafts are waiting in Send.`, "success");
   }, [act, load, flash]);
+
+  /** Not happy with the list: set aside the untouched ones and find the same number of different companies. */
+  const findDifferent = useCallback(async () => {
+    const r = await act("replace_companies", {}, "Setting these companies aside");
+    if (r?.removed) await autopilot(r.removed);
+  }, [act, autopilot]);
 
   useEffect(() => {
     const out = () => { setData(null); router.replace(`/login?next=${encodeURIComponent(path || "/desk")}`); };
@@ -168,8 +178,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     chatOpen, setChatOpen,
     ask: (q, opts) => { setPendingVoice({ lang: opts?.lang || "", spoken: !!opts?.spoken }); setPending(q); setChatOpen(true); },
     pendingQuestion, pendingVoice, clearPending: () => setPending(""),
-    autopilot,
-  }), [data, load, act, busy, progress, flash, me, companyId, chatOpen, pendingQuestion, pendingVoice, autopilot]);
+    autopilot, findDifferent,
+  }), [data, load, act, busy, progress, flash, me, companyId, chatOpen, pendingQuestion, pendingVoice, autopilot, findDifferent]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

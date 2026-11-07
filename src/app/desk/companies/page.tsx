@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { cn } from "cn";
-import { AlertTriangle, Building2, LayoutGrid, Mail, Plus, Search, Star, Table2 } from "lucide-react";
+import { AlertTriangle, Building2, LayoutGrid, Mail, Plus, RefreshCw, Search, Star, Table2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,7 +68,7 @@ function matches(c: Any, q: string) {
 }
 
 export default function CompaniesPage() {
-  const { data, act, busy, openCompany, can } = useDesk();
+  const { data, act, busy, progress, openCompany, can, findDifferent } = useDesk();
   const params = useSearchParams();
   const [q, setQ] = useState(params.get("q") || "");
   useEffect(() => { const v = params.get("q"); if (v !== null) setQ(v); }, [params]);
@@ -91,7 +91,13 @@ export default function CompaniesPage() {
   return (
     <>
       <PageHeader title="Companies" description="Best fit first. Open one for the full story.">
-        <Button variant={adding ? "secondary" : "outline"} onClick={() => setAdding(!adding)}><Plus />Add a company</Button>
+        <div className="flex flex-wrap gap-2">
+          {data.companies.some((c: Any) => ["PROSPECT", "QUALIFIED", "CONTACT_READY"].includes(c.stage)) && (
+            <Button variant="outline" disabled={!!busy || !!progress || !can("operator")} title="Sets aside the ones you have not written to yet and finds the same number of new companies"
+              onClick={() => findDifferent()}><RefreshCw />Find different companies</Button>
+          )}
+          <Button variant={adding ? "secondary" : "outline"} onClick={() => setAdding(!adding)}><Plus />Add a company</Button>
+        </div>
       </PageHeader>
 
       {adding && (
@@ -118,7 +124,7 @@ export default function CompaniesPage() {
       </div>
 
       {!cos.length ? (
-        <EmptyState icon={Building2} title="No companies yet">Lock the floor on the Event brief page, then run the autopilot from the Dashboard. Or add a company you already know.</EmptyState>
+        <EmptyState icon={Building2} title="No companies yet">Pick a number on Home and the desk finds them, or add a company you already know.</EmptyState>
       ) : view === "table" ? (
         <div className="overflow-x-auto rounded-lg border bg-card">
           <table className="w-full min-w-[53.75rem] text-sm">

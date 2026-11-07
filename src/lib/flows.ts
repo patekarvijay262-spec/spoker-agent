@@ -8,6 +8,8 @@ import * as CD from "./crustdata";
 import * as C from "./contacts";
 import * as PS from "./past-sponsors";
 import { toEnglish } from "./sarvam";
+import { fillFor, fillTemplate, unknownTokens, type Template } from "./template";
+import { lint } from "./lint";
 
 export const FALLBACK_DECK = "/fallback/sponsorship-deck.pdf";
 export const FALLBACK_MOU = "/fallback/mou.pdf";
@@ -82,6 +84,17 @@ export async function runBrief(oneLine: string, sender: { name: string; title?: 
   return { profile: r.profile };
 }
 /** Add or change the website, Instagram handle or known past sponsors after the brief, and look again. */
+/** Names the organiser types in: added straight to the list, no website or web search needed. */
+export async function addPastSponsors(names: string[], who: string) {
+  const e = await needEvent();
+  const clean = [...new Set(names.map((n) => PS.cleanSponsorName(n) || n.trim()).filter((n) => n.length >= 2))].slice(0, 80);
+  e.past_sponsor_list = PS.mergeSponsors([...(e.past_sponsor_list || []), ...clean.map((name) => ({ name, source: "organiser" as const }))]);
+  e.past_sponsors = PS.describeSponsors(e.past_sponsor_list);
+  await saveEvent(e);
+  await L.log(who, null, "past_sponsors", `Added ${clean.length} past sponsors: ${clean.join(", ")}`);
+  return { ok: true, added: clean.length };
+}
+
 export async function refreshPastSponsors(links: A.BriefLinks, who: string) {
   const e = await needEvent();
   const l = cleanLinks(links);
@@ -121,7 +134,13 @@ export async function lockFloor(floor: number, who: string) {
 // ---------- A1 ----------
 export async function runDiscover(count: number) {
   const e = await needEvent();
-  if (!e.floor_locked) throw new Error("Lock the floor price first (Command page). A broker that does not know its floor negotiates itself into a loss.");
+  // Finding companies never waits on pricing: an unlocked floor is set to the suggested one, which the organiser can
+  // change any time on Event. Negotiation still needs a floor, so one always exists from here on.
+  if (!e.floor_locked) {
+    e.floor_locked = true;
+    await saveEvent(e);
+    await L.log("A1", null, "floor_locked", `Floor set to the suggested INR ${e.floor_inr}; change it any time on Event`);
+  }
   const d = await db();
   const existing = (await d.q(`SELECT name FROM companies`)).map((r) => r.name);
   const added: string[] = [];
@@ -144,8 +163,9 @@ export async function runDiscover(count: number) {
     const missed = wanted.filter((w) => !found.some((f) => f.query.toLowerCase() === w.toLowerCase()));
     if (missed.length) await L.log("A1", null, "brands_not_found", `Could not find on Crustdata: ${missed.join(", ")}. Add them by hand with their website.`);
   }
-  const { data, raw } = await A.discover(e, Math.min(Math.max(count - added.length, 3), 25), existing);
+  const { data, raw } = await A.discover(e, Math.min(Math.max(count - added.length, 1), 100), existing);
   await L.log("A1", null, "plan", data.plan.thinking.join(" ").replace(/\*\*/g, ""));
+  if (data.plan.level) { e.sponsor_level = data.plan.level; await saveEvent(e); } // shown on Event as "the level we aim for"
   for (const c of data.companies || []) {
     if (!c?.name) continue;
     const id = slug(c.domain || c.name);
@@ -278,15 +298,72 @@ export async function setPrimaryContact(contactId: string, who: string) {
   return { ok: true };
 }
 
+/** The first email to one person: the organiser's own draft fitted to them when one is saved, otherwise the desk's
+ * priced offer. Either way it ends with the signature (and postal address) the linter requires. */
+async function composeFor(co: any, ct: any, e: A.EventProfile) {
+  const t = json<Template | null>(await getSetting("outreach_template", ""), null);
+  if (t?.body?.trim()) {
+    const v = fillFor(co, ct, e);
+    let body = fillTemplate(t.body, v);
+    // Every first email needs a way to say no (the linter checks it); add the line when the draft has none.
+    if (lint("x", A.withSignature(body, e), "cold", 0, "").some((p) => p.startsWith("missing opt-out"))) {
+      const at = body.search(/\n\s*(best|regards|warm regards|kind regards|thanks|thank you|cheers|sincerely)\b[^\n]*\n+[^\n]+\s*$/i);
+      const line = "If this is not relevant, reply 'no' and I will not follow up.";
+      body = at >= 0 ? `${body.slice(0, at)}\n\n${line}${body.slice(at)}` : `${body}\n\n${line}`;
+    }
+    // A draft that already signs off keeps its sign-off; only the contact lines and postal address are added.
+    const signed = /\n\s*(best|regards|warm regards|kind regards|thanks|thank you|cheers|sincerely)\b[^\n]*\n+[^\n]+\s*$/i.test(body);
+    const signedOff = signed ? A.withSignature(body, { ...e, sender: { ...(e.sender || {}), name: "" } as any }).replace(/\n\nBest regards,\n/, "\n\n") : A.withSignature(body, e);
+    return { subject: fillTemplate(t.subject || "{company} x {event}", v), body: signedOff };
+  }
+  return { subject: co.draft_subject || `${co.name} x ${e.name}`, body: A.withSignature(String(co.draft_body).replace(/^(Hi|Hello|Dear)\s+[^,\n]+,/i, `Hi ${firstName(ct.full_name)},`), e) };
+}
+
+/** "Not these, show me others": every company not written to yet is set aside (kept on record, so discovery never
+ * suggests it again) and its unsent drafts are cancelled. The caller then finds the same number of new ones. */
+export async function replaceCompanies(who: string) {
+  const d = await db();
+  const rows = await d.q(`SELECT id, name FROM companies c WHERE stage IN ('PROSPECT','QUALIFIED','CONTACT_READY')
+    AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.company_id=c.id AND m.status IN ('approved','claimed','sent'))`);
+  for (const r of rows) {
+    await d.q(`UPDATE messages SET status='cancelled', cancel_reason='company set aside' WHERE company_id=$1 AND status='drafted'`, [r.id]);
+    await L.setStage(r.id, "DISQUALIFIED", "Set aside: you asked for different companies", who);
+  }
+  await L.log(who, null, "replace_companies", `Set aside ${rows.length} companies to find different ones`);
+  return { ok: true, removed: rows.length };
+}
+
+/** Saves the organiser's draft. With `apply`, first emails still waiting for approval are rewritten from it. */
+export async function saveTemplate(t: Template, who: string, apply = false) {
+  const bad = unknownTokens(`${t.subject} ${t.body}`);
+  if (bad.length) throw new Error(`The draft uses ${bad.map((b) => `{${b}}`).join(", ")}, which the desk does not know. Use the buttons above the draft.`);
+  await setSetting("outreach_template", t.body.trim() ? JSON.stringify({ subject: t.subject.trim(), body: t.body.trim() }) : "");
+  await L.log(who, null, "template_saved", t.body.trim() ? "Saved your email draft" : "Cleared your email draft");
+  if (!apply) return { ok: true, updated: 0 };
+  const e = await needEvent();
+  const d = await db();
+  let updated = 0;
+  const failed: string[] = [];
+  for (const m of await d.q(`SELECT * FROM messages WHERE sequence='cold' AND step=0 AND status='drafted'`)) {
+    const co = await company(m.company_id);
+    const ct = (await d.q(`SELECT * FROM contacts WHERE id=$1`, [m.contact_id]))[0];
+    if (!co || !ct) continue;
+    const x = await composeFor(co, ct, e);
+    const r: any = await L.editDraft(m.key, x.subject, x.body);
+    if (r?.ok === false) failed.push(`${ct.full_name}: ${(r.problems || [r.reason]).join("; ")}`); else updated++;
+  }
+  return { ok: true, updated, failed };
+}
+
 export async function queueOffer(companyId: string) {
   const e = await needEvent();
   const co = await company(companyId);
   const ct = await primaryContact(companyId);
   if (!ct?.email) throw new Error("This contact has no email yet.");
-  if (!co.draft_body) throw new Error("No offer drafted yet. Run the analysis first.");
+  if (!co.draft_body && !(await getSetting("outreach_template", ""))) throw new Error("No offer drafted yet. Score the company first, or write your draft.");
   if (["UNVERIFIED", "OUTDATED"].includes(String(ct.email_status)) && !ct.reviewed_at) throw new Error(`${ct.full_name}'s email is not verified. Review it on Decision Makers first.`);
-  const body = String(co.draft_body).replace(/^(Hi|Hello|Dear)\s+[^,\n]+,/i, `Hi ${firstName(ct.full_name)},`);
-  const q = await L.queue({ key: `${ct.id}:cold:0`, contact_id: ct.id, company_id: companyId, sequence: "cold", step: 0, subject: co.draft_subject || `${co.name} x ${e.name}`, body: A.withSignature(body, e) });
+  const m = await composeFor(co, ct, e);
+  const q = await L.queue({ key: `${ct.id}:cold:0`, contact_id: ct.id, company_id: companyId, sequence: "cold", step: 0, subject: m.subject, body: m.body });
   if (q.ok) await L.log("A2", companyId, "offer_drafted", `Priced offer to ${ct.full_name} waiting for approval`);
   else await L.log("A2", companyId, "offer_refused", `${q.reason} ${(q.problems || []).join("; ")}`);
   return q;
@@ -300,7 +377,7 @@ export async function queueWave(companyId: string) {
   const e = await needEvent();
   const d = await db();
   const co = await company(companyId);
-  if (!co.draft_body) throw new Error("No offer drafted yet. Run the analysis first.");
+  if (!co.draft_body && !(await getSetting("outreach_template", ""))) throw new Error("No offer drafted yet. Score the company first, or write your draft.");
   const people = await d.q(`SELECT * FROM contacts c WHERE company_id=$1 AND status <> 'erased' AND email IS NOT NULL AND email <> ''
       AND (email_status IN ('VERIFIED','CORROBORATED') OR reviewed_at IS NOT NULL)
       AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.contact_id=c.id AND m.sequence='cold' AND m.step=0 AND m.status <> 'cancelled')
@@ -309,8 +386,8 @@ export async function queueWave(companyId: string) {
   const done: string[] = [];
   let full = false;
   for (const ct of people) {
-    const body = String(co.draft_body).replace(/^(Hi|Hello|Dear)\s+[^,\n]+,/i, `Hi ${firstName(ct.full_name)},`);
-    const q = await L.queue({ key: `${ct.id}:cold:0`, contact_id: ct.id, company_id: companyId, sequence: "cold", step: 0, subject: co.draft_subject || `${co.name} x ${e.name}`, body: A.withSignature(body, e) });
+    const m = await composeFor(co, ct, e);
+    const q = await L.queue({ key: `${ct.id}:cold:0`, contact_id: ct.id, company_id: companyId, sequence: "cold", step: 0, subject: m.subject, body: m.body });
     if (q.ok) done.push(ct.full_name);
     else if (q.reason === "wave_full") full = true;
     else await L.log("A2", companyId, "offer_refused", `${ct.full_name}: ${q.reason} ${(q.problems || []).join("; ")}`);

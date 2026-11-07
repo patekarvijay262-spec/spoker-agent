@@ -90,20 +90,10 @@ export function BriefComposer({ onDone, initial = "" }: { onDone?: () => void; i
           <Textarea ref={area} value={text} onChange={(e) => setText(e.target.value)} rows={5} aria-label="Describe your event"
             placeholder="Name and year, organiser, dates, city, footfall, who attends, goal in ₹, postal address with PIN"
             className="min-h-32 resize-y text-base leading-relaxed" />
-          <div className="flex items-center gap-3">
-            <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted" title={`Brief quality ${read.score}/100`}><div className={cn("h-full rounded-full transition-all", read.score >= 80 ? "bg-success" : "bg-foreground/70")} style={{ width: `${Math.max(3, read.score)}%` }} /></div>
-            <span className="text-xs text-muted-foreground num">{read.level}</span>
-            {!text && <button type="button" onClick={() => setText(EXAMPLE)} className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">Use an example</button>}
+          <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+            <span>Name and dates are enough to start. Add the rest whenever you like.</span>
+            {!text && <button type="button" onClick={() => setText(EXAMPLE)} className="underline-offset-2 hover:text-foreground hover:underline">Use an example</button>}
           </div>
-          {!!read.missing.length && !!text && (
-            <div className="flex flex-wrap gap-1.5">
-              {read.missing.slice(0, 5).map((f) => (
-                <button key={f.key} type="button" onClick={() => add(f.key)} title={f.why} className="inline-flex items-center gap-1 rounded-md border border-dashed px-2 py-0.5 text-xs text-muted-foreground hover:border-solid hover:text-foreground">
-                  <Plus className="size-3" />{f.label}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </Section>
 
@@ -115,13 +105,13 @@ export function BriefComposer({ onDone, initial = "" }: { onDone?: () => void; i
         </div>
       </Section>
 
-      <Section title="Past sponsors" hint="Your warmest leads. Links help the desk find them.">
+      <Section title="Past sponsors" hint="They show the level of company you can reach, and they are your warmest leads.">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-1.5"><Label htmlFor="lnk-web">Website</Label><Input id="lnk-web" value={links.website} onChange={(e) => setLinks({ ...links, website: e.target.value })} placeholder="aavhan.iitb.ac.in" inputMode="url" /></div>
           <div className="space-y-1.5"><Label htmlFor="lnk-ig">Instagram</Label><Input id="lnk-ig" value={links.instagram} onChange={(e) => setLinks({ ...links, instagram: e.target.value })} placeholder="@aavhan_iitb" /></div>
         </div>
-        <div className="space-y-1.5"><Label htmlFor="lnk-known">Names you know <span className="font-normal text-muted-foreground">(optional)</span></Label><Input id="lnk-known" value={links.known} onChange={(e) => setLinks({ ...links, known: e.target.value })} placeholder="Red Bull, boAt, Zomato" /></div>
-        {!links.website && !links.instagram && <p className="text-xs text-warning">Without a website or Instagram, past sponsors are often missed.</p>}
+        <div className="space-y-1.5"><Label htmlFor="lnk-known">Past sponsors you remember</Label><Input id="lnk-known" value={links.known} onChange={(e) => setLinks({ ...links, known: e.target.value })} placeholder="Red Bull, boAt, Zomato" /></div>
+        <p className="text-xs text-muted-foreground">The desk also reads your website and Instagram for more.</p>
       </Section>
 
       <Section title="Preferences" hint="Optional. Otherwise the desk picks what fits.">

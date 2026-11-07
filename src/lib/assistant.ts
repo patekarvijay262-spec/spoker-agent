@@ -85,13 +85,12 @@ const primaryOf = (s: S, id: string) => s.contacts.find((x: any) => x.company_id
 function nextSteps(s: S): { text: string; action?: AssistAction }[] {
   const out: { text: string; action?: AssistAction }[] = [];
   if (!s.event) return [{ text: "Write your event brief: name, organiser, dates, footfall, audience and goal.", action: { label: "Write the brief", href: "/desk/brief" } }];
-  if (!s.event.floor_locked) out.push({ text: `Check the tiers and lock the floor (suggested ${inr(s.event.floor_inr || 0)}). Discovery waits for this.`, action: { label: "Lock the floor", href: "/desk/brief" } });
   const drafts = s.messages.filter((m: any) => m.status === "drafted");
   if (drafts.length) out.push({ text: `Approve or edit ${drafts.length} drafted email${drafts.length > 1 ? "s" : ""} in the Outbox.`, action: { label: "Open Outbox", href: "/desk/outbox" } });
   if (s.exceptions.length) out.push({ text: `Decide ${s.exceptions.length} item${s.exceptions.length > 1 ? "s" : ""} only a person can decide.`, action: { label: "Open Inbox", href: "/desk/inbox" } });
   const unscored = s.companies.filter((c: any) => c.stage === "PROSPECT").length;
   if (unscored) out.push({ text: `Score ${unscored} found compan${unscored > 1 ? "ies" : "y"}: run the autopilot again.`, action: { label: "Open Dashboard", href: "/desk" } });
-  if (s.event.floor_locked && !s.companies.length) out.push({ text: "Run the autopilot to find sponsors.", action: { label: "Open Dashboard", href: "/desk" } });
+  if (!s.companies.length) out.push({ text: "Find companies: pick a number on Home.", action: { label: "Open Home", href: "/desk" } });
   if (drafts.length && !s.permission) out.push({ text: "Record the organisers' written permission in Settings, or cold emails stay on hold.", action: { label: "Open Settings", href: "/desk/settings" } });
   if (!s.gmail && s.messages.some((m: any) => m.status === "approved")) out.push({ text: "Connect Gmail in Settings so approved emails can go out.", action: { label: "Open Settings", href: "/desk/settings" } });
   if (!out.length) out.push({ text: "Nothing is waiting on you. Run the autopilot for more sponsors, or follow up on meetings." });

@@ -4,125 +4,118 @@ import { useState } from "react";
 
 import Link from "next/link";
 
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowRight, Building2, ClipboardPen, PenLine, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FitRing, Panel, PriorityBadge, Stat } from "@/components/desk/bits";
 import { useDesk } from "@/components/desk/desk-provider";
-import { actorName, type Any, ago, brandName, clock, humanLog, isHuman, lakh, money, visibleLog } from "@/components/desk/format";
-import { useVoiceControl } from "@/components/desk/voice-control";
+import { actorName, type Any, ago, brandName, clock, humanLog, isHuman, visibleLog } from "@/components/desk/format";
 
-function Welcome() {
-  const voice = useVoiceControl();
+// Home: the organiser's four steps side by side. Each one says plainly where it stands and opens with one click;
+// none is locked behind another, so a team can start with whatever it already has.
+
+function StepCard({ n, title, icon: Icon, href, status, children }: { n: number; title: string; icon: Any; href: string; status: React.ReactNode; children?: React.ReactNode }) {
   return (
-    <div className="mx-auto flex max-w-xl flex-col items-center gap-6 py-16 text-center md:py-24">
-      <div className="space-y-3">
-        <h1 className="text-3xl font-semibold tracking-tight text-balance">Tell the desk about your event</h1>
-        <p className="text-muted-foreground">It prices your package, finds sponsors with fresh budgets and drafts offers to the right person.</p>
-      </div>
-      <Button size="lg" nativeButton={false} render={<Link href="/desk/brief" />}>Write the event brief<ArrowRight /></Button>
-      <ol className="grid w-full gap-4 pt-6 text-left text-sm sm:grid-cols-3">
-        {[["Brief", "Describe the event"], ["Floor", "Lock your minimum price"], ["Sponsors", "Approve drafted offers"]].map(([t, d], i) => (
-          <li key={t} className="border-t pt-3"><div className="text-muted-foreground num">0{i + 1}</div><div className="font-medium">{t}</div><div className="text-muted-foreground">{d}</div></li>
-        ))}
-      </ol>
-      {voice.enabled && <p className="text-xs text-muted-foreground">Prefer talking? Press Alt+V and say “open the brief”.</p>}
+    <div className="flex flex-col gap-3 rounded-xl border p-5">
+      <Link href={href} className="group flex items-center gap-3">
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-sm text-muted-foreground num">{n}</span>
+        <span className="flex-1 font-medium group-hover:underline">{title}</span>
+        <Icon className="size-4 text-muted-foreground" />
+      </Link>
+      <div className="text-sm text-muted-foreground">{status}</div>
+      {children && <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">{children}</div>}
     </div>
   );
 }
 
-export default function Dashboard() {
-  const { data, busy, progress, autopilot, openCompany, can } = useDesk();
-  const [count, setCount] = useState(8);
+function Welcome() {
+  return (
+    <div className="mx-auto flex max-w-2xl flex-col gap-8 py-12 md:py-20">
+      <div className="space-y-3">
+        <h1 className="text-3xl font-semibold tracking-tight text-balance">Start wherever you like</h1>
+        <p className="text-muted-foreground">Most teams begin with the event name and dates. You can add the rest any time.</p>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Link href="/desk/brief" className="rounded-xl border p-5 transition hover:bg-muted/50">
+          <ClipboardPen className="mb-3 size-5 text-muted-foreground" />
+          <div className="font-medium">Describe your event</div>
+          <div className="text-sm text-muted-foreground">Name, dates and city are enough to begin.</div>
+        </Link>
+        <Link href="/desk/draft" className="rounded-xl border p-5 transition hover:bg-muted/50">
+          <PenLine className="mb-3 size-5 text-muted-foreground" />
+          <div className="font-medium">Write your email draft</div>
+          <div className="text-sm text-muted-foreground">The desk fits it to every company and person.</div>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+export default function Home() {
+  const { data, busy, progress, autopilot, can } = useDesk();
+  const [count, setCount] = useState(10);
   const e = data.event;
-  // Counts set per category on the Event brief decide how many to find.
-  const seatTotal = Object.entries(e?.category_counts || {}).filter(([id]) => (e?.sponsor_categories || []).includes(id)).reduce((s, [, n]) => s + (Number(n) || 0), 0);
   if (!e) return <Welcome />;
-  const cos: Any[] = data.companies;
-  const live = cos.filter((c) => c.stage !== "DISQUALIFIED");
-  const scored = live.filter((c) => c.intersection != null).sort((a, b) => (b.intersection || 0) - (a.intersection || 0));
-  const p1 = scored.filter((c) => c.priority === "P1").length;
-  const drafts = data.messages.filter((m: Any) => m.status === "drafted");
-  const ex = data.exceptions.filter((x: Any) => x.status === "open");
-  const won = data.deals.reduce((s: number, d: Any) => s + Number(d.cash_inr || 0), 0);
-  const goal = Number(e.goal_inr || 0);
-  const prospects = cos.filter((c) => c.stage === "PROSPECT").length;
-  const log = data.log.filter(visibleLog).slice(0, 6);
-  const coName = (id: string) => brandName(cos.find((c) => c.id === id) || { name: id });
+  const cos: Any[] = data.companies.filter((c: Any) => c.stage !== "DISQUALIFIED");
+  const contacts: Any[] = data.contacts || [];
+  const withPeople = new Set(contacts.filter((c) => c.email).map((c) => c.company_id)).size;
+  const msgs: Any[] = data.messages || [];
+  const waiting = msgs.filter((m) => m.status === "drafted").length;
+  const sent = msgs.filter((m) => m.status === "sent").length;
+  const replies = (data.exceptions || []).filter((x: Any) => x.status === "open").length;
+  const seatTotal = Object.entries(e.category_counts || {}).filter(([id]) => (e.sponsor_categories || []).includes(id)).reduce((s, [, n]) => s + (Number(n) || 0), 0);
+  const past = (e.past_sponsor_list || []).length;
+  const draft = data.settings?.outreach_template;
+  const log = data.log.filter(visibleLog).slice(0, 5);
+  const coName = (id: string) => brandName(data.companies.find((c: Any) => c.id === id) || { name: id });
+  const running = !!busy || !!progress;
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0 space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{e.name}</h1>
-          <p className="text-sm text-muted-foreground">{[e.organizer, e.dates, e.city].filter(Boolean).join(" · ")}</p>
-        </div>
-        {!e.floor_locked ? (
-          <Button nativeButton={false} render={<Link href="/desk/brief" />}>Review tiers and lock the floor<ArrowRight /></Button>
-        ) : (
-          <div className="flex items-center gap-2">
-            {seatTotal ? (
-              <span className="text-sm text-muted-foreground" title="Set per category on the Event brief">{seatTotal} by category</span>
-            ) : (
-              <Input type="number" inputMode="numeric" min={1} max={100} value={count || ""} onChange={(x) => setCount(Math.max(0, Math.min(100, Math.round(Number(x.target.value) || 0))))} aria-label="How many companies to find" className="w-20" />
-            )}
-            <Button disabled={!!busy || !!progress || !can("operator") || (!seatTotal && !count)} onClick={() => autopilot(seatTotal || count)}>{progress ? "Running…" : "Find sponsors"}</Button>
-          </div>
-        )}
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight">{e.name}</h1>
+        <p className="text-sm text-muted-foreground">{[e.organizer, e.dates, e.city].filter(Boolean).join(" · ")}</p>
       </div>
 
-      {progress && (
-        <div className="space-y-2">
-          <div className="h-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-foreground transition-all" style={{ width: `${((progress.done + 1) / Math.max(progress.total, 1)) * 100}%` }} /></div>
-          <p className="truncate text-xs text-muted-foreground">{progress.label}</p>
-        </div>
-      )}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <StepCard n={1} title="Event" icon={ClipboardPen} href="/desk/brief"
+          status={<>{/to be confirmed/i.test(e.dates || "") ? "Dates not set yet" : e.dates}{past ? ` · ${past} past sponsors` : " · add past sponsors to set the level"}</>}>
+          <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/desk/brief" />}>Open</Button>
+        </StepCard>
 
-      <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
-        <Stat label="Companies" value={live.length} sub={prospects ? `${prospects} waiting to be scored` : `${p1} top priority`} />
-        <Stat label="Offers to approve" value={drafts.length} sub={drafts.length ? <Link className="inline-flex items-center gap-0.5 text-foreground hover:underline" href="/desk/outbox">Open Outbox<ArrowUpRight className="size-3" /></Link> : "Nothing waiting"} />
-        <Stat label="Decisions for you" value={ex.length} sub={ex.length ? <Link className="inline-flex items-center gap-0.5 text-foreground hover:underline" href="/desk/inbox">Open Inbox<ArrowUpRight className="size-3" /></Link> : "All clear"} />
-        <Stat label="Signed" value={lakh(won)} sub={goal ? `of ${lakh(goal)} goal` : undefined} />
+        <StepCard n={2} title="Companies" icon={Building2} href="/desk/companies"
+          status={cos.length ? `${cos.length} companies · ${withPeople} with verified people` : "None yet. Pick a number and the desk finds them, with people, emails and LinkedIn."}>
+          {seatTotal
+            ? <span className="text-sm text-muted-foreground">{seatTotal} by category</span>
+            : <Input type="number" inputMode="numeric" min={1} max={100} value={count || ""} onChange={(x) => setCount(Math.max(0, Math.min(100, Math.round(Number(x.target.value) || 0))))} aria-label="How many companies to find" className="h-8 w-20" />}
+          <Button size="sm" disabled={running || !can("operator") || (!seatTotal && !count)} onClick={() => autopilot(seatTotal || count)}>{progress ? "Finding…" : cos.length ? "Find more" : "Find companies"}</Button>
+          {cos.length > 0 && <Button size="sm" variant="ghost" nativeButton={false} render={<Link href="/desk/companies" />}>See them<ArrowRight /></Button>}
+        </StepCard>
+
+        <StepCard n={3} title="Your draft" icon={PenLine} href="/desk/draft"
+          status={draft?.body ? "Written. Each email is fitted to the company and the person." : "Not written yet. Until you write one, the desk drafts its own."}>
+          <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/desk/draft" />}>{draft?.body ? "Edit" : "Write it"}</Button>
+        </StepCard>
+
+        <StepCard n={4} title="Send" icon={Send} href="/desk/outbox"
+          status={waiting || sent || replies ? [waiting && `${waiting} ready to send`, sent && `${sent} sent`, replies && `${replies} replies`].filter(Boolean).join(" · ") : "Nothing to send yet."}>
+          <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/desk/outbox" />}>Open</Button>
+        </StepCard>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <Panel title="Top targets" action={<Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/desk/companies" />}>View all</Button>}>
-          {scored.length ? (
-            <ul className="-my-2 divide-y">
-              {scored.slice(0, 6).map((c) => (
-                <li key={c.id}>
-                  <button type="button" onClick={() => openCompany(c.id)} className="flex w-full items-center gap-3 py-3 text-left transition hover:opacity-80">
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2"><span className="truncate font-medium">{brandName(c)}</span><PriorityBadge p={c.priority} /></div>
-                      <div className="truncate text-sm text-muted-foreground">{c.reasons?.about?.industry || c.segment || ""}{c.price_range ? ` · ${money(c.price_range)}` : ""}</div>
-                    </div>
-                    <FitRing value={c.intersection} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="py-8 text-center text-sm text-muted-foreground">{e.floor_locked ? "Press Find sponsors to start." : "Lock the floor first."}</p>
-          )}
-        </Panel>
-
-        <Panel title="Activity">
-          <ol className="space-y-4" aria-live="polite">
+      {log.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground">Recently</h2>
+          <ol className="space-y-3" aria-live="polite">
             {log.map((l: Any) => (
               <li key={l.id} className="text-sm">
-                <div className="line-clamp-2">
-                  {l.company_id && <button type="button" className="mr-1 font-medium hover:underline" onClick={() => openCompany(l.company_id)}>{coName(l.company_id)}</button>}
-                  <span className="text-muted-foreground" title={humanLog(l).full}>{humanLog(l).text}</span>
-                </div>
-                <div className="mt-0.5 text-xs text-muted-foreground" title={clock(l.ts)}>{isHuman(l.actor) ? "You" : actorName(l.actor)} · {ago(l.ts)}</div>
+                <span className="line-clamp-1">{l.company_id && <span className="mr-1 font-medium">{coName(l.company_id)}</span>}<span className="text-muted-foreground" title={humanLog(l).full}>{humanLog(l).text}</span></span>
+                <span className="text-xs text-muted-foreground" title={clock(l.ts)}>{isHuman(l.actor) ? "You" : actorName(l.actor)} · {ago(l.ts)}</span>
               </li>
             ))}
-            {!log.length && <li className="text-sm text-muted-foreground">Nothing yet.</li>}
           </ol>
-        </Panel>
-      </div>
+        </section>
+      )}
     </>
   );
 }

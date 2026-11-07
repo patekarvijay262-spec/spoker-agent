@@ -34,7 +34,7 @@ export function useAgentStates(): AgentState[] {
   const below = ex.filter((x) => /below_floor/.test(x.kind)).length;
   const m: Record<string, Omit<AgentState, "id" | "name" | "job" | "status" | "last">> = {
     A0: !e ? { metric: "No brief yet", detail: "Waiting for your event brief", needs: 1, cta: { label: "Write the brief", href: "/desk/brief" } }
-      : !e.floor_locked ? { metric: `Floor ${lakh(e.floor_inr)} suggested`, detail: "Check the tiers and lock the floor", needs: 1, cta: { label: "Lock the floor", href: "/desk/brief" } }
+      : !e.floor_locked ? { metric: `Floor ${lakh(e.floor_inr)} suggested`, detail: "Used as is unless you change it on Event", needs: 0 }
       : { metric: `Floor ${lakh(e.floor_inr)} locked`, detail: `${(e.tiers || []).length} tiers, goal ${lakh(e.goal_inr || 0)}`, needs: 0, cta: { label: "View brief", href: "/desk/brief" } },
     A1: { metric: cos.length ? `${scored} scored · ${p1} P1` : "No companies yet", detail: cos.length ? `${count((c) => c.stage === "PROSPECT")} waiting to be scored, ${count((c) => c.stage === "DISQUALIFIED")} dropped` : "Runs after the floor is locked", needs: 0, cta: { label: "See companies", href: "/desk/companies" } },
     A2: { metric: `${verified} verified contacts`, detail: drafts ? `${drafts} offers waiting for your approval` : review ? `${review} contacts need a check` : `${msgs.filter((x) => x.sequence === "cold").length} offers written`, needs: drafts + review, cta: drafts ? { label: "Approve offers", href: "/desk/outbox" } : review ? { label: "Check contacts", href: "/desk/people" } : { label: "See people", href: "/desk/people" } },

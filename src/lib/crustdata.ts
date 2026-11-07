@@ -127,16 +127,23 @@ export async function searchPeople(companyId: number | null, companyName: string
   return r.profiles || [];
 }
 
+/** Phone numbers seen on the last email lookups, by profile URL (read with phonesFor right after businessEmails). */
+const PHONES = new Map<string, string[]>();
+export const phonesFor = (url: string) => PHONES.get(normUrl(url)) || [];
+
 /** Business emails through /person/enrich (contact.business_emails, +1 credit each). Up to 25 URLs per call. */
 export async function businessEmails(profileUrls: string[], trace?: Trace): Promise<Record<string, { email: string; status: string; company_id?: number }[]>> {
   const urls = profileUrls.filter(Boolean).slice(0, 25);
   if (!urls.length) return {};
-  const r = await cd<any[]>("/person/enrich", { professional_network_profile_urls: urls, fields: ["basic_profile.name", "contact.business_emails"] }, trace);
+  const r = await cd<any[]>("/person/enrich", { professional_network_profile_urls: urls, fields: ["basic_profile.name", "contact.business_emails", "contact.phone_numbers"] }, trace);
   const out: Record<string, any[]> = {};
   for (const row of Array.isArray(r) ? r : []) {
     const pd = row?.matches?.[0]?.person_data;
     const list = (pd?.contact?.business_emails || []).map((e: any) => ({ email: String(e.email || ""), status: String(e.status || "unknown"), company_id: e.crustdata_company_id }));
     out[normUrl(row.matched_on)] = list;
+    // Phone numbers ride along on the same call (plain strings or {number}); kept for the contact card.
+    const phones = (pd?.contact?.phone_numbers || []).map((p: any) => String(typeof p === "string" ? p : p?.number || p?.phone || p?.value || "")).filter((p: string) => /\d{7,}/.test(p.replace(/\D/g, "")));
+    if (phones.length) PHONES.set(normUrl(row.matched_on), phones);
   }
   return out;
 }

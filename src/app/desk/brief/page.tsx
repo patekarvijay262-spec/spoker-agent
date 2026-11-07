@@ -54,7 +54,7 @@ function Tiers() {
     catch (x: Any) { flash("Could not save", x.message, "error"); }
   };
   return (
-    <Section title="Tiers and floor" hint={<span title={e.pricing_basis}>Edit before you lock the floor.</span>}>
+    <Section title="Prices" hint={<span title={e.pricing_basis}>Suggested from your audience size. Change anything, any time.</span>}>
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border xl:grid-cols-4">
         {tiers.map((t: Any, i: number) => (
           <div key={i} className="flex flex-col gap-2 bg-card p-4">
@@ -74,22 +74,20 @@ function Tiers() {
           </div>
         ))}
       </div>
-      {!e.floor_locked && can("operator") && (
+      {can("operator") && (
         <Button variant="ghost" size="sm" onClick={() => (edit ? save() : setEdit(true))}>{edit ? <><Check />Save tiers</> : <><Pencil />Edit tiers</>}</Button>
       )}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 font-medium"><Lock className="size-4" />Floor {e.floor_locked && <span className="text-xs font-normal text-success">Locked</span>}</div>
-          <p className="text-sm text-muted-foreground">The smallest deal agents accept without you. Never shown to sponsors.</p>
+          <div className="flex items-center gap-2 font-medium"><Lock className="size-4" />Lowest you would accept</div>
+          <p className="text-sm text-muted-foreground">Agents never agree below this without you. Sponsors never see it.</p>
         </div>
-        {e.floor_locked ? <div className="text-2xl tracking-tight num">{inr(e.floor_inr)}</div> : (
-          <div className="flex items-center gap-2">
-            <Input type="number" value={floor} onChange={(x) => setFloor(Number(x.target.value))} className="w-36" aria-label="Floor in rupees" />
-            <Button disabled={!!busy || !floor || !can("approver")} onClick={() => act("lock_floor", { floor }, "Locking the floor")}>Lock at {lakh(floor)}</Button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <Input type="number" value={floor} onChange={(x) => setFloor(Number(x.target.value))} className="w-36" aria-label="Lowest price in rupees" />
+          {(floor !== Number(e.floor_inr) || !e.floor_locked) && <Button variant="outline" disabled={!!busy || !floor || !can("approver")} onClick={() => act("lock_floor", { floor }, "Saving the lowest price")}>Save {lakh(floor)}</Button>}
+        </div>
       </div>
-      {!can("approver") && !e.floor_locked && <p className="text-xs text-muted-foreground">Only an approver or admin can lock the floor.</p>}
+      
     </Section>
   );
 }
@@ -120,8 +118,22 @@ function PastSponsors() {
   const [open, setOpen] = useState(false);
   const [links, setLinks] = useState({ website: e.website || "", instagram: e.instagram || "", known: "" });
   const recheck = async () => { await act("past_sponsors", { links: { website: links.website, instagram: links.instagram, known: links.known.split(",").map((x) => x.trim()).filter(Boolean) } }, "Looking for past sponsors"); setOpen(false); };
+  const [names, setNames] = useState("");
+  const addNames = async () => { await act("add_past_sponsors", { names: names.split(",").map((x) => x.trim()).filter(Boolean) }, "Adding past sponsors"); setNames(""); };
+  const lv = e.sponsor_level;
   return (
-    <Section title="Past sponsors" hint="Contacted first, as returning sponsors.">
+    <Section title="Past sponsors" hint="They show the level of company you can reach, and they are written to first.">
+      {can("operator") && (
+        <form className="flex gap-2" onSubmit={(x) => { x.preventDefault(); if (names.trim()) addNames(); }}>
+          <Input value={names} onChange={(x) => setNames(x.target.value)} placeholder="Add past sponsors, comma separated: Red Bull, SBI, boAt" aria-label="Add past sponsors" />
+          <Button type="submit" variant="outline" disabled={!!busy || !names.trim()}>Add</Button>
+        </form>
+      )}
+      {lv?.min_hc > 0 && (
+        <p className="rounded-lg bg-muted/50 px-3 py-2 text-sm">
+          Level we aim for: companies of about <span className="num">{Number(lv.min_hc).toLocaleString("en-IN")}+</span> people{lv.industries?.length ? <>, like your past sponsors in {lv.industries.slice(0, 3).join(", ")}</> : null}.
+        </p>
+      )}
       {list.length ? (
         <ul className="flex flex-wrap gap-1.5">
           {list.map((s: Any) => (
@@ -132,7 +144,7 @@ function PastSponsors() {
           ))}
         </ul>
       ) : <p className="text-sm text-muted-foreground">None found yet.</p>}
-      {e.links_hint && <p className="text-sm text-warning">{e.links_hint}</p>}
+      {e.links_hint && <p className="text-sm text-muted-foreground">{e.links_hint}</p>}
       <InstagramConnect />
 
       {can("operator") && (open ? (
@@ -144,7 +156,7 @@ function PastSponsors() {
           <Input value={links.known} onChange={(x) => setLinks({ ...links, known: x.target.value })} placeholder="Names you know, comma separated" aria-label="Past sponsors you know" />
           <div className="flex gap-2"><Button size="sm" disabled={!!busy} onClick={recheck}>Save and search</Button><Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button></div>
         </div>
-      ) : <Button size="sm" variant="outline" onClick={() => setOpen(true)}>Add links or names</Button>)}
+      ) : <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>Read our website or Instagram again</Button>)}
     </Section>
   );
 }

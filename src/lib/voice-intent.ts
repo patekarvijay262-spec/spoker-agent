@@ -11,6 +11,7 @@ export const PAGES: { to: string; label: string; words: RegExp }[] = [
   { to: "/desk/companies", label: "Companies", words: /\b(compan(y|ies)|sponsor list|prospects|targets|leads)\b/ },
   { to: "/desk/pipeline", label: "Pipeline", words: /\b(pipeline|kanban|stages|funnel)\b/ },
   { to: "/desk/agents", label: "Agents", words: /\b(agents?|agent flow|automation)\b/ },
+  { to: "/desk/draft", label: "Your draft", words: /\b(my draft|email template|template|write (my|the|an) (email|draft))\b/ },
   { to: "/desk/outbox", label: "Outbox", words: /\b(outbox|drafts?|approvals?|emails? to approve|out box)\b/ },
   { to: "/desk/inbox", label: "Inbox", words: /\b(inbox|decisions|exceptions|in box)\b/ },
   { to: "/desk/people", label: "People", words: /\b(people|contacts|decision makers?)\b/ },

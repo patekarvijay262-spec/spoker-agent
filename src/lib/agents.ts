@@ -22,7 +22,7 @@ export type EventProfile = {
   postal_address: string;
   event_type?: EventType; reach?: number; audience_short?: string; pricing_basis?: string;
   /** Organiser preferences from the brief composer: sponsor category ids and brands they already have in mind. */
-  sponsor_categories?: string[]; wanted_brands?: string[]; category_counts?: Record<string, number>; contacts_per_company?: number;
+  sponsor_categories?: string[]; wanted_brands?: string[]; category_counts?: Record<string, number>; contacts_per_company?: number; sponsor_level?: SponsorLevel;
   /** Past sponsors with where each was found, the Instagram handle, follower count and a hint when links are missing. */
   instagram?: string; past_sponsor_list?: PS.PastSponsor[]; social_followers?: number; links_hint?: string; past_sponsor_checked?: string[];
   /** Days the event runs, parsed from the dates; more days means more activation inventory to sell. */
@@ -385,7 +385,10 @@ export type ScalePlan = {
   /** Share of the list for each pool. */
   mix: { early: number; growth: number; established: number };
   thinking: string[];
+  /** The level past sponsors set: how many were found, their main industries and the size floor used. */
+  level?: SponsorLevel;
 };
+export type SponsorLevel = { matched: number; industries: string[]; min_hc: number; median_hc: number };
 const BAND_RULES: { band: ScaleBand; upTo: number; min: number; max: number | null; sweet: [number, number]; mix: ScalePlan["mix"] }[] = [
   { band: "micro", upTo: 1500, min: 5, max: 1000, sweet: [10, 300], mix: { early: 0.55, growth: 0.35, established: 0.1 } },
   { band: "small", upTo: 5000, min: 10, max: 5000, sweet: [25, 1000], mix: { early: 0.45, growth: 0.35, established: 0.2 } },
@@ -548,10 +551,29 @@ export async function discover(e: EventProfile, count: number, exclude: string[]
       return (await CD.searchCompanies({ op: "and", conditions: filters }, n, trace).catch(() => ({ companies: [] as any[] }))).companies; // a sort this plan does not support
     }
   };
+  // Past sponsors set the level: their industries and sizes show which companies really sign an event like this one
+  // (Mood Indigo: banks, drinks, auto, beauty, audio, PSU energy and D2C brands). One search finds them on Crustdata;
+  // the size floor then applies to every search below, and their industries feed a pool of peers.
+  const pastNames = [...new Set((e.past_sponsor_list || []).map((s) => s.name).filter((n) => n.length >= 3))].slice(0, 20);
+  const peerInd: string[] = [];
+  let levelHc = 0;
+  if (pastNames.length >= 3) {
+    try {
+      const known = (await CD.searchCompanies({ op: "and", conditions: [{ field: "locations.country", type: "=", value: country }, { op: "or", conditions: pastNames.map((n) => ({ field: "basic_info.name", type: "[.]", value: n })) }] }, pastNames.length * 2, trace)).companies;
+      const tally: Record<string, number> = {};
+      for (const c of known) { const k = String(g(c, "taxonomy.professional_network_industry") || ""); if (k) tally[k] = (tally[k] || 0) + 1; }
+      peerInd.push(...Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k]) => k));
+      const hcs = known.map((c) => Number(g(c, "headcount.total") || 0)).filter((n) => n > 0).sort((a, b) => a - b);
+      if (hcs.length >= 2) levelHc = Math.round(hcs[Math.floor(hcs.length * 0.25)] * 0.5);
+      plan.level = { matched: known.length, industries: peerInd.slice(0, 6), min_hc: levelHc, median_hc: hcs.length ? hcs[Math.floor(hcs.length / 2)] : 0 };
+      if (levelHc) plan.thinking.push(`Your past sponsors set the level: companies of about ${levelHc.toLocaleString("en-IN")}+ people${peerInd.length ? `, mostly ${peerInd.slice(0, 3).join(", ")}` : ""}.`);
+    } catch { /* plan without it */ }
+  }
+  const minHc = Math.max(plan.min_hc, levelHc);
   if (seats.length) {
-    // One search per category, three candidates per seat, sized to the event; the rules and the strategist then pick.
+    // One search per category, three candidates per seat, at the level past sponsors set; the rules then pick.
     for (const [id, n] of seats) {
-      const got = await search([...common, ...sizeRange(Math.max(plan.min_hc, 10), plan.max_hc), { field: "taxonomy.professional_network_industry", type: "in", value: categoryById(id)!.industries }], n * 3, [{ field: "headcount.total", order: "desc" }]);
+      const got = await search([...common, ...sizeRange(Math.max(minHc, 10), plan.max_hc), { field: "taxonomy.professional_network_industry", type: "in", value: categoryById(id)!.industries }], n * 3, [{ field: "headcount.total", order: "desc" }]);
       rows.push(...got.map((c) => ({ c, pool: (Number(g(c, "headcount.total") || 0) >= Math.max(plan.sweet[0], 200) ? "established" : Number(g(c, "headcount.growth_percent.6m") || 0) >= 8 ? "growth" : "early") as Pool })));
     }
   } else for (const p of pools) {
@@ -584,23 +606,11 @@ export async function discover(e: EventProfile, count: number, exclude: string[]
     } catch { /* keep the other pools */ }
   }
 
-  // Past sponsors set the level: their industries and sizes show which companies really sign an event like this one
-  // (Mood Indigo: banks, drinks, auto, beauty, audio, PSU energy and D2C brands). One search finds them on Crustdata,
-  // a second finds peers in the same industries at a similar size.
-  const pastNames = [...new Set((e.past_sponsor_list || []).map((s) => s.name).filter((n) => n.length >= 3))].slice(0, 15);
-  const peerInd: string[] = [];
-  if (pastNames.length >= 4 && !seats.length) {
+  // Peers of past sponsors: same industries, at least their size floor (skipped when the organiser set seats per category).
+  if (peerInd.length && !seats.length) {
     try {
-      const known = (await CD.searchCompanies({ op: "and", conditions: [{ field: "locations.country", type: "=", value: country }, { op: "or", conditions: pastNames.map((n) => ({ field: "basic_info.name", type: "[.]", value: n })) }] }, pastNames.length * 2, trace)).companies;
-      const tally: Record<string, number> = {};
-      for (const c of known) { const k = String(g(c, "taxonomy.professional_network_industry") || ""); if (k) tally[k] = (tally[k] || 0) + 1; }
-      peerInd.push(...Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k]) => k));
-      const hcs = known.map((c) => Number(g(c, "headcount.total") || 0)).filter((n) => n > 0).sort((a, b) => a - b);
-      const floorHc = hcs.length ? Math.max(plan.min_hc, Math.round(hcs[Math.floor(hcs.length * 0.25)] * 0.5)) : plan.min_hc;
-      if (peerInd.length) {
-        const got = await CD.searchCompanies({ op: "and", conditions: [...common, ...sizeRange(floorHc, null), { field: "taxonomy.professional_network_industry", type: "in", value: peerInd }] }, Math.ceil(want * 1.2), trace, [{ field: "headcount.total", order: "desc" }]);
-        rows.push(...got.companies.map((c) => ({ c, pool: "peer" as Pool })));
-      }
+      const got = await CD.searchCompanies({ op: "and", conditions: [...common, ...sizeRange(minHc, null), { field: "taxonomy.professional_network_industry", type: "in", value: peerInd }] }, Math.ceil(want * 1.2), trace, [{ field: "headcount.total", order: "desc" }]);
+      rows.push(...got.companies.map((c) => ({ c, pool: "peer" as Pool })));
     } catch { /* keep the other pools */ }
   }
 
@@ -903,6 +913,7 @@ export async function analyze(e: EventProfile, company: { name: string; domain?:
     return {
       kind: i === 0 ? "primary" : "alternative", full_name: t.name, designation: t.title,
       email: mine?.email || "", email_source: mine ? `crustdata (${mine.status})` : "", email_verified_by_crustdata: verified,
+      phone: CD.phonesFor(t.url)[0] || "", phone_source: CD.phonesFor(t.url)[0] ? t.url : "",
       responsibility: owns ? `Current title "${t.title}" at ${coName}${since ? ` since ${since}` : ""} (Crustdata)` : "",
       evidence: [{ claim: `${t.title} at ${coName}${since ? ` since ${since}` : ""}`, url: t.url, date: t.start }],
       evidence_date: new Date().toISOString().slice(0, 10), left_company: !!t.moved,
