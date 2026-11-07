@@ -23,9 +23,45 @@ function Section({ title, hint, children }: { title: string; hint?: ReactNode; c
   );
 }
 
-function Details() {
-  const { data } = useDesk();
+/** Every detail stays editable: dates are often fixed after the brief, the address or signature change. */
+function EditDetails({ onDone }: { onDone: () => void }) {
+  const { data, load, flash, busy } = useDesk();
   const e = data.event;
+  const [f, setF] = useState({ organizer: e.organizer || "", dates: e.dates || "", city: e.city || "", website: e.website || "", reach: String(e.reach || ""), postal_address: e.postal_address || "", name: e.sender?.name || "", title: e.sender?.title || "", phone: e.sender?.phone || "" });
+  const field = (k: keyof typeof f, label: string, extra: Any = {}) => (
+    <label className="space-y-1.5 text-sm"><span className="text-muted-foreground">{label}</span><Input value={f[k]} onChange={(x) => setF({ ...f, [k]: x.target.value })} {...extra} /></label>
+  );
+  const save = async () => {
+    const reach = Math.round(Number(f.reach.replace(/[^\d.]/g, "")) || 0);
+    const profile = { ...e, organizer: f.organizer.trim(), dates: f.dates.trim(), city: f.city.trim(), website: f.website.trim(), postal_address: f.postal_address.trim(),
+      ...(reach ? { reach, audience_short: String(e.audience_short || "").replace(/^[\d,]+\s*/, `${reach.toLocaleString("en-IN")} `) } : {}),
+      sender: { ...(e.sender || {}), name: f.name.trim(), title: f.title.trim(), phone: f.phone.trim() } };
+    try { await api("/api/event", { profile }); await load(); flash("Details saved", undefined, "success"); onDone(); }
+    catch (x: Any) { flash("Could not save", x.message, "error"); }
+  };
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {field("dates", "Dates", { placeholder: "18 to 21 Dec 2027" })}
+        {field("city", "City")}
+        {field("organizer", "Organiser")}
+        {field("website", "Website", { inputMode: "url" })}
+        {field("reach", "Expected footfall", { inputMode: "numeric" })}
+        {field("postal_address", "Postal address (under every email)")}
+        {field("name", "Your name")}
+        {field("title", "Your title")}
+        {field("phone", "Your phone", { inputMode: "tel" })}
+      </div>
+      <div className="flex gap-2"><Button disabled={!!busy} onClick={save}><Check />Save</Button><Button variant="ghost" onClick={onDone}>Cancel</Button></div>
+    </div>
+  );
+}
+
+function Details() {
+  const { data, can } = useDesk();
+  const [editing, setEditing] = useState(false);
+  const e = data.event;
+  if (editing) return <Section title="Details"><EditDetails onDone={() => setEditing(false)} /></Section>;
   const verified = (e.proof_items || []).filter((p: Any) => p.verified);
   const rows: [string, ReactNode][] = [
     ["Organiser", e.organizer], ["Dates", [e.dates, e.days > 1 ? `${e.days} days` : ""].filter(Boolean).join(" · ")], ["City", e.city],
@@ -39,6 +75,7 @@ function Details() {
       <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-[8rem_minmax(0,1fr)]">
         {rows.map(([k, v]) => <div key={k} className="contents"><dt className="text-muted-foreground">{k}</dt><dd className="min-w-0">{v || <span className="text-muted-foreground">—</span>}</dd></div>)}
       </dl>
+      {can("operator") && <Button size="sm" variant="ghost" onClick={() => setEditing(true)}><Pencil />Edit details</Button>}
     </Section>
   );
 }

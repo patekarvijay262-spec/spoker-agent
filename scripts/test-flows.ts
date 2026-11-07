@@ -60,6 +60,7 @@ let fails = 0; const eq = (n: string, g: any, w: any) => { const ok = JSON.strin
   eq("A0 never writes unknown", [/unknown/i.test(p.audience), /unknown/i.test(p.past_sponsors), /unknown/i.test(p.proof)], [false, false, false]);
   eq("A0 proof and past sponsors from the web, with sources", [(p.sources || []).length > 0, /20,000\+ footfall/.test(p.proof), /Alpha/.test(p.past_sponsors)], [true, true, true]);
   eq("A0 postal address with PIN", /400076/.test(p.postal_address), true);
+  eq("A0 postal address never picks up dates or counts", A.postalFrom("Techfest 2027, IIT Bombay, December 2027, Powai, Mumbai 400076, 3 days", "IIT Bombay"), "IIT Bombay, Powai, Mumbai 400076");
   eq("A0 reads a JavaScript-built sponsors page through the rendered fetch", (p.past_sponsor_list || []).filter((s: any) => s.source === "website").map((s: any) => `${s.name}/${s.role}`), ["Delta Capital/Title Sponsor", "Zeta Foods/Title Sponsor"]);
   await setSetting("approvers", "Rishiraaj");
   await setSetting("verified_only", "0"); // these flows check the unverified paths too; verified-only is tested at the end

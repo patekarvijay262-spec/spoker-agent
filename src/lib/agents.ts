@@ -157,6 +157,20 @@ export type BriefResult =
   | { status: "ok"; profile: EventProfile; searches: number; verified: number }
   | { status: "clarify"; questions: string[]; found: string; sources: CheckedSource[]; searches: number };
 
+/** The postal address from a line that mentions it among other facts ("Techfest 2027, IIT Bombay, December 2027,
+ * Powai, Mumbai 400076, 3 days"): the PIN's part and the place names just before it, never dates, days or counts.
+ * Led by the organiser when it is not already there. */
+export function postalFrom(line: string, organizer = "") {
+  const parts = line.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+  const at = parts.findIndex((p) => /\b\d{6}\b/.test(p));
+  if (at < 0) return "";
+  const notPlace = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b|\b20\d{2}\b|\bdays?\b|footfall|attendees|\d{3,}\s*(people|students)|edition|festival|fest\b|summit/i;
+  const keep = [parts[at].replace(/^(postal )?address\s*:\s*/i, "").replace(/(\b\d{6}\b).*$/, "$1")];
+  for (let j = at - 1; j >= 0 && keep.length < 4 && !notPlace.test(parts[j]); j--) keep.unshift(parts[j]);
+  const addr = keep.map((p) => p.replace(/^(postal )?address\s*:\s*/i, "")).join(", ");
+  return organizer && !addr.toLowerCase().includes(organizer.toLowerCase()) && !/organising team/i.test(organizer) ? `${organizer}, ${addr}` : addr;
+}
+
 export async function buildBrief(oneLine: string, sender: { name: string; title?: string; phone?: string; email?: string }, answers = "", links: BriefLinks = {}): Promise<BriefResult> {
   const text = `${oneLine}\n${answers}`.trim();
   const parts = oneLine.split(/[,|;\n]/).map((s) => s.trim()).filter(Boolean);
@@ -283,7 +297,7 @@ export async function buildBrief(oneLine: string, sender: { name: string; title?
     inkind_needs: INKIND[type], models: MODELS.slice(0, 8), policies: "Never sell judging or awards; share attendee data only with opt-in.",
     sources: good, unverified_sources: checked.filter((c) => !c.verified),
     sender: { name: sender.name, title: sender.title || `Partnerships, ${name}`, org: organizer, phone: sender.phone || "", email: sender.email || "" },
-    postal_address: addrLine || [organizer, city, pin].filter(Boolean).join(", "),
+    postal_address: postalFrom(addrLine || text.split(/\n/).find((l) => /\b\d{6}\b/.test(l)) || "", organizer) || [organizer, city, pin].filter(Boolean).join(", "),
     event_type: type, reach: R,
     pricing_basis: (goal
       ? `Sized to your goal of ${lakh(goal)}: 1 Title, 2 Platinum, 4 Gold and 6 Silver deals reach it. A reach-based estimate (about INR 40 per attendee at ${R.toLocaleString("en-IN")}${reach ? "" : ", estimated"}) would put Title near ${lakh(reachTitle)}${title > reachTitle * 1.5 ? ": the goal needs more sponsors than that mix or stronger reach proof" : ""}.`
