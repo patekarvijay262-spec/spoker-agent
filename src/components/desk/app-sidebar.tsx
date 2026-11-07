@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 
 import { useDesk } from "./desk-provider";
-import { type Any, api, lakh, OP_AGENT } from "./format";
+import { type Any, api, isDecision, lakh, OP_AGENT } from "./format";
 
 export function AppSidebar() {
   const path = usePathname();
@@ -22,7 +22,7 @@ export function AppSidebar() {
   const e = data?.event;
   const msgs: Any[] = data?.messages || [];
   const drafts = msgs.filter((m) => m.status === "drafted" || m.status === "needs_manual_review").length;
-  const decisions = (data?.exceptions || []).filter((x: Any) => x.status === "open").length;
+  const decisions = (data?.replies || []).length + (data?.exceptions || []).filter(isDecision).length;
   const review = (data?.contacts || []).filter((c: Any) => c.is_primary && !c.reviewed_at && ["UNVERIFIED", "UNAVAILABLE", "OUTDATED"].includes(c.email_status)).length;
   const live = busy ? OP_AGENT[busy.op] : progress ? "A1" : "";
 

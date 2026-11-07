@@ -9,7 +9,7 @@ import { ArrowRight, Building2, ClipboardPen, PenLine, Send } from "lucide-react
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDesk } from "@/components/desk/desk-provider";
-import { actorName, type Any, ago, brandName, clock, humanLog, isHuman, visibleLog } from "@/components/desk/format";
+import { actorName, type Any, ago, brandName, clock, humanLog, isDecision, isHuman, visibleLog } from "@/components/desk/format";
 
 // Home: the organiser's four steps side by side. Each one says plainly where it stands and opens with one click;
 // none is locked behind another, so a team can start with whatever it already has.
@@ -62,7 +62,7 @@ export default function Home() {
   const msgs: Any[] = data.messages || [];
   const waiting = msgs.filter((m) => m.status === "drafted").length;
   const sent = msgs.filter((m) => m.status === "sent").length;
-  const replies = (data.exceptions || []).filter((x: Any) => x.status === "open").length;
+  const replies = (data.replies || []).length + (data.exceptions || []).filter(isDecision).length;
   const seatTotal = Object.entries(e.category_counts || {}).filter(([id]) => (e.sponsor_categories || []).includes(id)).reduce((s, [, n]) => s + (Number(n) || 0), 0);
   const past = (e.past_sponsor_list || []).length;
   const draft = data.settings?.outreach_template;

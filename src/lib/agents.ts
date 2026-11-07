@@ -366,6 +366,8 @@ function junk(c: any) {
   const dom = cleanDomain(g(c, "basic_info.primary_domain") || ""), web = String(g(c, "basic_info.website") || "");
   if (!dom || /linktr\.ee|wa\.me|whatsapp|bit\.ly|instagram\.com|facebook\.com|talent500|naukri|indeed|blogspot|wixsite|godaddysites/i.test(dom + " " + web)) return true;
   if (/work from home|franchise|dealership|distributorship|earn (from|at) home|unlimited earning|mlm|network marketing|direct selling|sourcing agent|we are recruiting/i.test(name + " " + desc)) return true;
+  // Direct-selling brands whose company pages rarely say so (Forever Living slipped into Techfest's list).
+  if (/\b(forever living|amway|herbalife|vestige|modicare|qnet|rcm business|mi lifestyle|oriflame|avon products|asclepius|safe ?shop)\b/i.test(name)) return true;
   if (/\b(fest|festival|college|university|institute|school|society|club)\b/i.test(name)) return true;
   const gr = Number(g(c, "headcount.growth_percent.6m") || 0), hc = Number(g(c, "headcount.total") || 0);
   if (gr > 300 && hc < 1000) return true; // tiny company with a data jump
@@ -863,10 +865,11 @@ export async function analyze(e: EventProfile, company: { name: string; domain?:
   const sources: Source[] = news.slice(0, 6).map((n) => ({ url: n.url, title: n.title }));
   for (const s of sources) trace.urls.add(s.url);
 
-  // Hard drops: brand safety and distress.
+  // Hard drops: brand safety and distress. A past sponsor is never dropped over news (a share-price dip dropped
+  // IDFC First Bank from Techfest): the news shows as a caution to read before pitching instead.
   const policyBlock = e.policies && new RegExp(`no (${cls})`, "i").test(e.policies);
   const dropReason = cls === "unsafe" ? `brand-safety category (${industry || "restricted product"})`
-    : distress.length >= 2 || (isFinite(gr6) && gr6 <= -15) ? `company in distress: ${distress[0]?.title || `headcount ${Math.round(gr6)}% in 6 months`}`
+    : !company.past_sponsor && (distress.length >= 2 || (isFinite(gr6) && gr6 <= -15)) ? `company in distress: ${distress[0]?.title || `headcount ${Math.round(gr6)}% in 6 months`}`
     : policyBlock ? "event policy excludes this category" : "";
 
   // People: who owns this budget, from Crustdata's people dataset.

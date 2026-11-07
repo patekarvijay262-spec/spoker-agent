@@ -124,3 +124,8 @@ export function humanLog(l: Any): { text: string; full: string } {
     default: return { text: money(first(d || String(STAGE_LABEL[l.to_stage] || l.action || "").replace(/_/g, " "))), full };
   }
 }
+
+/** Notes about finding people ("no verified person at X") are not decisions or replies: they live on the company
+ * and in a quiet list, never in the Replies count. */
+export const CONTACT_NOTES = ["no_contact", "no_email", "verify_contact", "recap_no_email"];
+export const isDecision = (x: Any) => x.status === "open" && !CONTACT_NOTES.includes(x.kind);

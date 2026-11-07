@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState, PageHeader } from "@/components/desk/bits";
 import { useDesk } from "@/components/desk/desk-provider";
-import { type Any, ago, brandName, inr, when } from "@/components/desk/format";
+import { type Any, ago, brandName, CONTACT_NOTES, inr, isDecision, when } from "@/components/desk/format";
 
 const KIND: Record<string, string> = { below_floor: "Below your floor", no_email: "Email needed", no_contact: "No contact found", suspicious_email: "Suspicious email", reply_on_live_deal: "Reply on a live deal", unverified_email: "Unverified email", send_failed: "Send failed", meeting_exception: "From the meeting", below_floor_mou: "MOU below floor", verify_contact: "Check the contact", delivery_unknown: "Delivery uncertain", calendar_failed: "Calendar invite failed", recap_no_email: "Recap needs an email" };
 const CLASS_TONE: Record<string, string> = { interested: "bg-success/15 text-success", meeting: "bg-primary/15 text-primary", need_info: "bg-info/15 text-info", referral: "bg-muted text-foreground", not_now: "bg-muted text-muted-foreground", not_interested: "bg-destructive/15 text-destructive", opt_out: "bg-destructive/15 text-destructive", auto_reply: "bg-muted text-muted-foreground", bounce: "bg-destructive/15 text-destructive" };
@@ -46,11 +46,12 @@ function Decision({ x }: { x: Any }) {
 
 export default function InboxPage() {
   const { data, act, busy, flash, can, openCompany } = useDesk();
-  const exs = data.exceptions.filter((x: Any) => x.status === "open");
+  const exs = data.exceptions.filter(isDecision);
+  const notes = data.exceptions.filter((x: Any) => x.status === "open" && CONTACT_NOTES.includes(x.kind));
   const coName = (id: string) => brandName(data.companies.find((c: Any) => c.id === id) || { name: id || "General" });
   return (
     <>
-      <PageHeader title="Inbox" description="Decisions only a person should make, and sponsor replies.">
+      <PageHeader title="Replies" description="What sponsors wrote back, and the few calls only you should make.">
         <Button variant="outline" disabled={!!busy || !data.settings.gmail} onClick={() => act("replies", {}, "Checking Gmail for replies").then((r: Any) => r && flash(`Checked ${r.checked} threads`, `${r.found} new replies`, "info"))}><RefreshCw className="size-4" />Check Gmail for replies</Button>
       </PageHeader>
       {!can("approver") && <p className="text-sm text-muted-foreground">Decisions here need an approver.</p>}
@@ -58,7 +59,18 @@ export default function InboxPage() {
         <div className="space-y-4">
           <h2 className="flex items-center gap-2 font-medium"><Gavel className="size-5 text-muted-foreground" />Decisions <span className="text-muted-foreground num">{exs.length}</span></h2>
           {exs.map((x: Any) => <Decision key={x.id} x={x} />)}
-          {!exs.length && <EmptyState icon={CheckCircle2} title="Nothing needs you">The agents handle the rest. You will see offers below your floor and anything unusual here.</EmptyState>}
+          {!exs.length && <EmptyState icon={CheckCircle2} title="Nothing needs you">Offers below your lowest price and anything unusual would show here.</EmptyState>}
+          {notes.length > 0 && (
+            <details className="rounded-lg border p-3 text-sm">
+              <summary className="cursor-pointer text-muted-foreground">No verified person found yet at {notes.length} {notes.length === 1 ? "company" : "companies"}</summary>
+              <p className="mt-2 text-xs text-muted-foreground">Nothing to do unless you know someone there. Open a company to add a person, or use Find people again later.</p>
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {[...new Set(notes.map((x: Any) => x.company_id))].map((id: Any) => (
+                  <li key={id}><button type="button" onClick={() => openCompany(id)} className="rounded-md border px-2 py-0.5 text-xs hover:bg-muted">{coName(id)}</button></li>
+                ))}
+              </ul>
+            </details>
+          )}
         </div>
         <section className="space-y-3">
           <h2 className="flex items-center gap-2 font-medium"><MailCheck className="size-5 text-muted-foreground" />Replies <span className="text-muted-foreground num">{data.replies.length}</span></h2>
