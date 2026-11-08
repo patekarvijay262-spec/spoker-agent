@@ -15,9 +15,9 @@ import { actorName, type Any, ago, brandName, clock, humanLog, isDecision, isHum
 // Home: the organiser's four steps side by side. Each one says plainly where it stands and opens with one click;
 // none is locked behind another, so a team can start with whatever it already has.
 
-function StepCard({ n, title, icon: Icon, href, status, children }: { n: number; title: string; icon: Any; href: string; status: React.ReactNode; children?: React.ReactNode }) {
+function StepCard({ n, title, icon: Icon, href, status, children, tour }: { n: number; title: string; icon: Any; href: string; status: React.ReactNode; children?: React.ReactNode; tour?: string }) {
   return (
-    <div className="flex flex-col gap-3 rounded-xl border p-5">
+    <div className="flex flex-col gap-3 rounded-xl border p-5" data-tour={tour}>
       <Link href={href} className="group flex items-center gap-3">
         <span className="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-sm text-muted-foreground num">{n}</span>
         <span className="flex-1 font-medium group-hover:underline">{title}</span>
@@ -60,7 +60,7 @@ function Today() {
   const on = data.settings?.daily_reminder !== false;
   const gmail = !!data.settings?.gmail;
   return (
-    <section className="rounded-xl bg-muted/40 p-5">
+    <section className="rounded-xl bg-muted/40 p-5" data-tour="today">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-medium">Today</h2>
         {can("admin") && gmail && (
@@ -111,13 +111,13 @@ export default function Home() {
 
       <Today />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2" data-tour="steps">
         <StepCard n={1} title="Event" icon={ClipboardPen} href="/desk/brief"
           status={<>{/to be confirmed/i.test(e.dates || "") ? "Dates not set yet" : e.dates}{past ? ` · ${past} past sponsors` : " · add past sponsors to set the level"}</>}>
           <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/desk/brief" />}>Open</Button>
         </StepCard>
 
-        <StepCard n={2} title="Companies" icon={Building2} href="/desk/companies"
+        <StepCard tour="find" n={2} title="Companies" icon={Building2} href="/desk/companies"
           status={cos.length ? `${cos.length} companies · ${withPeople} with verified people` : "None yet. Pick a number and the desk finds them, with people, emails and LinkedIn."}>
           {seatTotal
             ? <span className="text-sm text-muted-foreground">{seatTotal} by category</span>

@@ -91,7 +91,7 @@ export default function CompaniesPage() {
   return (
     <>
       <PageHeader title="Companies" description="Best fit first. Open one for the full story.">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" data-tour="companies-actions">
           {data.companies.some((c: Any) => ["PROSPECT", "QUALIFIED", "CONTACT_READY"].includes(c.stage)) && (
             <Button variant="outline" disabled={!!busy || !!progress || !can("operator")} title="Sets aside the ones you have not written to yet and finds the same number of new companies"
               onClick={() => findDifferent()}><RefreshCw />Find different companies</Button>

@@ -9,9 +9,9 @@ import { cn } from "cn";
 import { type Any, STAGE_LABEL, VLABEL } from "./format";
 
 /** Page title row. `eyebrow` is accepted for older call sites but no longer shown: the sidebar already says where you are. */
-export function PageHeader({ title, description, children }: { eyebrow?: string; title: string; description?: ReactNode; children?: ReactNode }) {
+export function PageHeader({ title, description, children, tour }: { eyebrow?: string; title: string; description?: ReactNode; children?: ReactNode; tour?: string }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="flex flex-wrap items-end justify-between gap-4" data-tour={tour}>
       <div className="min-w-0 space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-balance">{title}</h1>
         {description && <p className="max-w-2xl text-sm text-muted-foreground">{description}</p>}

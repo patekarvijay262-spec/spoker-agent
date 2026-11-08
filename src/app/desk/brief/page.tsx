@@ -14,9 +14,9 @@ import { useDesk } from "@/components/desk/desk-provider";
 import { type Any, api, host, inr, lakh } from "@/components/desk/format";
 import { SPONSOR_CATEGORIES } from "@/lib/sponsor-categories";
 
-function Section({ title, hint, children }: { title: string; hint?: ReactNode; children: ReactNode }) {
+function Section({ title, hint, children, tour }: { title: string; hint?: ReactNode; children: ReactNode; tour?: string }) {
   return (
-    <section className="grid gap-4 border-t py-8 md:grid-cols-[14rem_minmax(0,1fr)] md:gap-10">
+    <section className="grid gap-4 border-t py-8 md:grid-cols-[14rem_minmax(0,1fr)] md:gap-10" data-tour={tour}>
       <div className="space-y-1"><h2 className="font-medium">{title}</h2>{hint && <div className="text-sm text-muted-foreground">{hint}</div>}</div>
       <div className="min-w-0 space-y-4">{children}</div>
     </section>
@@ -71,7 +71,7 @@ function Details() {
     ["Signature", [e.sender?.name, e.sender?.title, e.postal_address].filter(Boolean).join(", ")],
   ];
   return (
-    <Section title="Details">
+    <Section title="Details" tour="details">
       <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-[8rem_minmax(0,1fr)]">
         {rows.map(([k, v]) => <div key={k} className="contents"><dt className="text-muted-foreground">{k}</dt><dd className="min-w-0">{v || <span className="text-muted-foreground">—</span>}</dd></div>)}
       </dl>
@@ -159,7 +159,7 @@ function PastSponsors() {
   const addNames = async () => { await act("add_past_sponsors", { names: names.split(",").map((x) => x.trim()).filter(Boolean) }, "Adding past sponsors"); setNames(""); };
   const lv = e.sponsor_level;
   return (
-    <Section title="Past sponsors" hint="They show the level of company you can reach, and they are written to first.">
+    <Section tour="past" title="Past sponsors" hint="They show the level of company you can reach, and they are written to first.">
       {can("operator") && (
         <form className="flex gap-2" onSubmit={(x) => { x.preventDefault(); if (names.trim()) addNames(); }}>
           <Input value={names} onChange={(x) => setNames(x.target.value)} placeholder="Add past sponsors, comma separated: Red Bull, SBI, boAt" aria-label="Add past sponsors" />
@@ -220,7 +220,7 @@ function Prefs() {
   const total = cats.reduce((s, id) => s + n(id), 0);
   const dirty = JSON.stringify(cats) !== JSON.stringify(e.sponsor_categories || []) || brands !== (e.wanted_brands || []).join(", ") || cats.some((id) => n(id) !== (e.category_counts || {})[id]) || people !== (e.contacts_per_company || 12);
   return (
-    <Section title="Looking for" hint={cats.length ? `${total} sponsors: discovery fills each category to its number.` : "None picked: the desk chooses."}>
+    <Section tour="looking" title="Looking for" hint={cats.length ? `${total} sponsors: discovery fills each category to its number.` : "None picked: the desk chooses."}>
       <div className="flex flex-wrap gap-1.5">
         {SPONSOR_CATEGORIES.map((c) => {
           const on = cats.includes(c.id);

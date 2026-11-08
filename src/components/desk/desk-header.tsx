@@ -7,20 +7,21 @@ import { usePathname, useRouter } from "next/navigation";
 import { Building2, Loader2, MessageCircle, Mic, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
+
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 import { useDesk } from "./desk-provider";
 import { type Any, AGENTS, brandName, OP_AGENT } from "./format";
 import { LayoutControls } from "./layout-controls";
+import { SearchDialog } from "./search";
 import { ThemeSwitcher } from "./theme-switcher";
 import { useVoiceControl, VOICE_EXAMPLES, VoiceButton } from "./voice-control";
 
 const PAGES = [
   ["Home", "/desk"], ["Event", "/desk/brief"], ["Your draft", "/desk/draft"], ["Companies", "/desk/companies"], ["Pipeline", "/desk/pipeline"], ["Agents", "/desk/agents"],
   ["Send", "/desk/outbox"], ["Replies", "/desk/inbox"], ["People", "/desk/people"], ["Meetings", "/desk/meetings"], ["Deals and MOUs", "/desk/deals"],
-  ["Sponsor updates", "/desk/sponsors"], ["Settings", "/desk/settings"],
+  ["Sponsor updates", "/desk/sponsors"], ["Settings", "/desk/settings"], ["Help", "/desk/help"],
 ];
 const TITLES: Record<string, string> = { ...Object.fromEntries(PAGES.map(([t, u]) => [u, t])), "/desk/admin": "Activity" };
 
@@ -31,7 +32,11 @@ export function DeskHeader() {
   const voice = useVoiceControl();
   const [open, setOpen] = useState(false);
   useEffect(() => {
-    const k = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setOpen((o) => !o); } };
+    const k = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      const typing = /^(input|textarea|select)$/i.test(el?.tagName || "") || !!el?.isContentEditable;
+      if (((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") || (e.key === "/" && !typing)) { e.preventDefault(); setOpen((o) => !o); }
+    };
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
   }, []);
@@ -44,14 +49,13 @@ export function DeskHeader() {
     <header className="sticky top-0 z-40 flex h-12 shrink-0 items-center border-b bg-background/80 backdrop-blur-md">
       <div className="flex w-full items-center gap-2 px-4 lg:px-6">
         <SidebarTrigger className="-ml-1" />
+        {/* Search sits top left as one icon (Ctrl+K or / also open it). */}
+        <button type="button" onClick={() => setOpen(true)} aria-label="Search (Ctrl+K)" title="Search (Ctrl+K)"
+          className="grid size-8 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground">
+          <Search className="size-4" />
+        </button>
         <Separator orientation="vertical" className="mx-1 data-[orientation=vertical]:h-4 data-[orientation=vertical]:self-center" />
         <div className="hidden text-sm font-medium lg:block">{title}</div>
-        <button type="button" onClick={() => setOpen(true)} aria-label="Search"
-          className="flex h-8 min-w-0 items-center gap-2 rounded-md px-2 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground lg:ml-3">
-          <Search className="size-4 shrink-0" />
-          <span className="hidden truncate sm:inline">Search</span>
-          <kbd className="hidden rounded border px-1 font-mono text-[0.65rem] md:inline">⌘K</kbd>
-        </button>
         <div className="ml-auto flex items-center gap-1">
           {(busy || progress) && (
             <div className="mr-2 hidden items-center gap-2 text-xs text-muted-foreground md:flex" role="status" aria-live="polite" title={label}>
@@ -61,7 +65,7 @@ export function DeskHeader() {
             </div>
           )}
           <VoiceButton className="hidden md:inline-flex" />
-          <Button variant="ghost" size="sm" className="hidden md:inline-flex" onClick={() => setChatOpen(true)}>
+          <Button variant="ghost" size="sm" className="hidden md:inline-flex" data-tour="ask" onClick={() => setChatOpen(true)}>
             <MessageCircle />Ask
           </Button>
           <LayoutControls />
@@ -78,31 +82,7 @@ export function DeskHeader() {
           </div>
         )}
       </div>
-      <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder="Type a company, a page or a question..." />
-        <CommandList>
-          <CommandEmpty>Nothing found. Press Enter in the chat to ask the desk instead.</CommandEmpty>
-          <CommandGroup heading="Quick actions">
-            {voice.enabled && <CommandItem value={`talk voice ${VOICE_EXAMPLES.join(" ")}`} onSelect={() => { setOpen(false); voice.toggle(); }}><Mic />Talk to the desk<span className="ml-auto text-xs text-muted-foreground">Alt+V</span></CommandItem>}
-            <CommandItem onSelect={() => { setOpen(false); ask("What's going on?"); }}><MessageCircle />Ask: what's going on?</CommandItem>
-            <CommandItem onSelect={() => { setOpen(false); ask("What should I do next?"); }}><MessageCircle />Ask: what should I do next?</CommandItem>
-            <CommandItem onSelect={() => go("/desk/brief")}>Edit the event brief</CommandItem>
-            <CommandItem onSelect={() => go("/desk/outbox")}>Review drafts in the Outbox</CommandItem>
-          </CommandGroup>
-          <CommandSeparator />
-          <CommandGroup heading="Companies">
-            {(data?.companies || []).slice(0, 60).map((c: Any) => (
-              <CommandItem key={c.id} value={`${c.name} ${c.domain}`} onSelect={() => { setOpen(false); openCompany(c.id); }}>
-                <Building2 />{brandName(c)}<span className="ml-auto text-xs text-muted-foreground">{c.priority || ""}</span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-          <CommandSeparator />
-          <CommandGroup heading="Pages">
-            {PAGES.map(([t, u]) => <CommandItem key={u} onSelect={() => go(u)}>{t}</CommandItem>)}
-          </CommandGroup>
-        </CommandList>
-      </CommandDialog>
+      <SearchDialog open={open} onClose={() => setOpen(false)} />
     </header>
   );
 }

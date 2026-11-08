@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { cn } from "cn";
 import {
-  Activity, Bot, Building2, CalendarClock, ClipboardPen, Handshake, Inbox, KanbanSquare, LayoutDashboard, LogOut, Megaphone, PenLine, Send, Settings, Users,
+  Activity, Bot, Building2, CalendarClock, ClipboardPen, Handshake, Inbox, KanbanSquare, LayoutDashboard, LifeBuoy, LogOut, Megaphone, PenLine, Send, Settings, Users,
 } from "lucide-react";
 
 import {
@@ -108,6 +108,11 @@ export function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
+          <SidebarMenuItem data-tour="help">
+            <SidebarMenuButton isActive={isOn("/desk/help")} tooltip="Help" render={<Link href="/desk/help" prefetch={false} />}>
+              <LifeBuoy /><span>Help</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton isActive={isOn("/desk/settings")} tooltip="Settings" render={<Link href="/desk/settings" prefetch={false} />}>
               <Settings /><span>Settings</span>

@@ -243,6 +243,11 @@ let fails = 0; const eq = (n: string, g: any, w: any) => { const ok = JSON.strin
     companies: [{ id: "z", name: "Zepto" }],
   }, noon).map((i) => i.text);
   eq("today: a calm list of what needs you and what runs on its own", ti, ["2 emails are waiting for your yes", "1 approved email goes out today", "1 follow-up goes out today, on its own", "Meeting with Zepto tomorrow at 15:00", "1 new reply from sponsors", "1 offer needs your call"]);
+  // The Ask bot answers "how do I…" from the same guide as the Help page and the tour.
+  const GD = await import("../src/lib/guide");
+  const asks: [string, string][] = [["how do I attach my deck?", "deck"], ["how do I change the event dates?", "dates"], ["where do I add past sponsors?", "past"], ["how can I get different companies?", "different"], ["how do I write my own email?", "draft"], ["how do I send the emails?", "send"], ["how to connect gmail", "gmail"], ["how many people per company can I set?", "people"], ["how do I book a meeting?", "meeting"], ["how do I make the MOU?", "mou"], ["can my teammate login?", "team"], ["where do I see the phone number and linkedin?", "contacts"], ["how do I get reminders every day?", "today"], ["how do I change the prices?", "prices"], ["I am new, where do I start?", "start"]];
+  eq("help: every common how-to question finds its guide entry", asks.map(([q]) => GD.findHowTo(q)?.id), asks.map(([, id]) => id));
+  eq("help: every tour step and how-to points at a real page", [...GD.TOUR.map((t) => t.path), ...GD.HOWTOS.flatMap((h) => h.links.map((l) => l.href.split("?")[0]))].every((p) => /^\/desk(\/(brief|companies|draft|outbox|inbox|meetings|deals|settings|people|help))?$/.test(p)), true);
   // Verified people only (the default): nobody without a verified work email is kept or written to.
   await setSetting("verified_only", "1");
   await d.q(`INSERT INTO companies (id, name, domain, stage, reasons, updated_at) SELECT 'vo-co', 'Acme Fintech Two', 'acme.in', 'PROSPECT', reasons, updated_at FROM companies WHERE id='acme-in'`);

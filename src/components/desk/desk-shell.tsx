@@ -14,6 +14,7 @@ import { CompanySheet } from "./company-sheet";
 import { DeskHeader } from "./desk-header";
 import { DeskProvider, useDesk } from "./desk-provider";
 import { api } from "./format";
+import { Tour } from "./tour";
 import { VoiceProvider } from "./voice-control";
 
 function Main({ children }: { children: ReactNode }) {
@@ -31,6 +32,7 @@ function Main({ children }: { children: ReactNode }) {
     <>
       {data.me?.viewing && <ViewingBar name={data.me.viewing.name} />}
       <main className="mx-auto w-full max-w-7xl space-y-8 p-4 pb-32 md:p-8 md:pb-12">{children}</main>
+      {!data.me?.viewing && <Tour />}
     </>
   );
 }

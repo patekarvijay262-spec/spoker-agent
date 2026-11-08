@@ -5,6 +5,7 @@ import { db, json, getSetting } from "./db";
 import { hasCrustdata } from "./crustdata";
 import { chat, fromEnglish, hasSarvam, toEnglish } from "./sarvam";
 import { categoryById } from "./sponsor-categories";
+import { findHowTo, howToAnswer } from "./guide";
 
 export type AssistAction = { label: string; href?: string; open?: string };
 export type AssistReply = { reply: string; actions: AssistAction[]; suggestions: string[]; engine: "rules" | "gemini" | "sarvam"; lang?: string; script?: "roman" | "native"; unmatched?: boolean };
@@ -34,20 +35,7 @@ const GLOSSARY: [RegExp, string][] = [
   [/draft mode|gmail|send/, "Without Gmail connected the desk runs in **draft mode**: approved emails wait in the Outbox. Connect Google in Settings to send from your own mailbox. Nothing is ever sent without a named approver."],
   [/caution|negative|risk/, "**Caution** signals are recent news a person should read before pitching, such as a regulator settlement. Two or more distress headlines, or a big headcount drop, drop the company automatically."],
 ];
-const HOWTO: [RegExp, string, AssistAction[]][] = [
-  [/add (a )?(company|sponsor|brand)|specific (company|brand)/, "Open **Companies**, type the brand and its website in *Add a company*, and press *Add and score*. Or name brands in the Event brief under *Brands you have in mind*: the desk adds them before searching.", [{ label: "Open Companies", href: "/desk/companies" }]],
-  [/category|categories|kind of sponsor|type of sponsor|which sponsors/, "Choose sponsor categories on the **Event brief** page (for example Food and beverages, Fintech, Sportswear). Discovery then searches only those industries. Leave them empty and the desk picks industries that fit your event type.", [{ label: "Open Event brief", href: "/desk/brief" }]],
-  [/lock|floor price/, "On the **Event brief** page check the tiers, set the floor and press *Lock floor*. Discovery starts only after the floor is locked.", [{ label: "Open Event brief", href: "/desk/brief" }]],
-  [/connect|google|gmail|calendar/, "Go to **Settings** and press *Connect Google*. An admin needs GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET set in Vercel first.", [{ label: "Open Settings", href: "/desk/settings" }]],
-  [/approve|send (the )?email|outbox/, "Open the **Outbox**, read each draft, then *Approve* or *Edit*. *Send approved now* sends them (or they wait in draft mode without Gmail).", [{ label: "Open Outbox", href: "/desk/outbox" }]],
-  [/team|teammate|user|invite|role/, "In **Settings** an admin adds people with a role: admin, approver, operator or read-only. Only approvers can approve emails or lock the floor.", [{ label: "Open Settings", href: "/desk/settings" }]],
-  [/meeting|call|meet/, "Open a company, go to *Next steps* and use *Book a meeting*: draft the scheduling email, then confirm the time to send a Google Meet invite.", [{ label: "Open Pipeline", href: "/desk/pipeline" }]],
-  [/deck|pitch/, "Open a company and press *Build deck* under Pitch. You get a shareable 10-slide deck and a talk track for your team.", []],
-  [/mou|contract|agreement/, "Open a company, fill the deal sheet under *MOU* and press *Draft MOU*. Below-floor amounts go to your Inbox first.", []],
-  [/export|csv|download/, "Use *Export CSV* on the **People** page to download every contact with sources.", [{ label: "Open People", href: "/desk/people" }]],
-  [/start|begin|first|brief|prompt|what should i (type|write|enter)/, "Start on the **Event brief** page. Give the event name and year, organiser, dates, city, expected footfall, who attends, your goal in rupees and the postal address. The meter shows what is missing. Then pick the sponsor categories you want, or skip.", [{ label: "Open Event brief", href: "/desk/brief" }]],
-  [/reset|start over|clear/, "Settings has *Reset desk*, which clears companies, emails and the brief. Settings and the Google connection stay. You must type RESET to confirm.", [{ label: "Open Settings", href: "/desk/settings" }]],
-];
+// How-to answers come from the same guide as the Help page and the tour (src/lib/guide.ts), so all three agree.
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9₹ ]+/g, " ").replace(/\s+/g, " ").trim();
 const inr = (n: number) => (n >= 1e7 ? `₹${+(n / 1e7).toFixed(2)} crore` : n >= 1e5 ? `₹${+(n / 1e5).toFixed(2)} lakh` : `₹${Math.round(n).toLocaleString("en-IN")}`);
@@ -145,6 +133,11 @@ export async function answer(message: string, _path = ""): Promise<AssistReply> 
   const q = norm(message);
   const R = (reply: string, actions: AssistAction[] = [], suggestions: string[] = []): AssistReply => ({ reply, actions, suggestions: suggestions.length ? suggestions : defaultSuggestions(s), engine: "rules" });
   if (!q) return R("Ask me anything about the desk: what is going on, why a company was picked, or how to do something.");
+  // "How do I…" questions come first, from the same guide as the Help page and the tour, so a new user always gets
+  // the steps rather than numbers about the desk.
+  const howTo = /^(how|where|can i|can we|can my|i want to|i wanna|i need to|what do i do to|how to|help me|is there a way|i am new|im new|new here|show me how|teach me)\b|\bhow (do|can|should) (i|we)\b|\bwhere (do|can) (i|we)\b/.test(q) ? findHowTo(q) : null;
+  if (howTo) return R(howToAnswer(howTo), howTo.links, ["Show me the tour", "What should I do next?"]);
+  if (/^(show me the tour|start the tour|tour|take the tour)$/.test(q)) return R("Opening the tour: it walks you through each page. Use Next, or Play to let it run.", [{ label: "Start the tour", href: "/desk?tour=1" }]);
   if (/^(hi|hello|hey|yo|namaste|hii+|good (morning|evening|afternoon))\b/.test(q) && q.split(" ").length <= 4) {
     const st = statusAnswer(s);
     return { ...st, reply: `Hi! I'm the desk assistant. I watch the agents and can explain anything on screen.\n\n${st.reply}` };
@@ -193,9 +186,10 @@ export async function answer(message: string, _path = ""): Promise<AssistReply> 
     const cats = (s.event.sponsor_categories || []).map((id: string) => categoryById(id)?.label || id);
     return R(cats.length ? `The desk is searching: **${cats.join(", ")}**${s.event.wanted_brands?.length ? `, plus brands you asked for: ${s.event.wanted_brands.join(", ")}` : ""}.` : "No categories chosen, so the desk picks industries that fit your event type.", [{ label: "Change on Event brief", href: "/desk/brief" }]);
   }
-  for (const [rx, text, acts] of HOWTO) if (rx.test(q) && /how|where|can i|want to|should|add|connect|change|pick|choose|start|type|write/.test(q)) return R(text, acts);
+  const how = findHowTo(q);
+  if (how && /how|where|can i|want to|should|add|connect|change|pick|choose|start|type|write|upload|attach|send|set|edit|find|see|get/.test(q)) return R(howToAnswer(how), how.links, ["Show me the tour", "What should I do next?"]);
   for (const [rx, text] of GLOSSARY) if (rx.test(q)) return R(text + (/credit|crustdata|cost/.test(q) && hasCrustdata() ? "" : ""), [], ["What's going on?", "What should I do next?"]);
-  for (const [rx, text, acts] of HOWTO) if (rx.test(q)) return R(text, acts);
+  if (how) return R(howToAnswer(how), how.links, ["Show me the tour", "What should I do next?"]);
   return { ...R("I'm not sure what you mean yet. I can explain what the agents are doing, why a company was picked, who to contact, what's waiting for you, or how to do something. Try one of these:", [], defaultSuggestions(s)), unmatched: true } as AssistReply;
 }
 

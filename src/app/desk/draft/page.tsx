@@ -44,7 +44,7 @@ function DeckBox() {
   };
   const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)} MB`;
   return (
-    <div className="space-y-2 rounded-xl border p-4">
+    <div className="space-y-2 rounded-xl border p-4" data-tour="deck">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <div className="text-sm font-medium">Your deck</div>
@@ -108,7 +108,7 @@ export default function DraftPage() {
       <PageHeader title="Your draft" description="Write it once, the way you would send it. The desk fits it to every company and person." />
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <section className="space-y-3">
+        <section className="space-y-3" data-tour="draft">
           <Input value={subject} onChange={(x) => setSubject(x.target.value)} aria-label="Subject" placeholder="Subject" />
           <div className="flex flex-wrap gap-1.5">
             {TOKENS.map((t) => (

@@ -36,7 +36,7 @@ export default function OutboxPage() {
 
   return (
     <>
-      <PageHeader title="Outbox" description="Nothing is sent until an approver says yes.">
+      <PageHeader tour="send" title="Send" description="Nothing is sent until an approver says yes.">
         {sets.draft.length > 1 && <Button variant="outline" disabled={!!busy || !approver} onClick={() => act("approve_many", { keys: sets.draft.map((m) => m.key) }, "Approving").then((r: Any) => r && flash(`Approved ${r.results.filter((x: Any) => x.ok).length} emails`, undefined, "success"))}><CheckCheck className="size-4" />Approve all {sets.draft.length}</Button>}
         <Button disabled={!!busy || !approver} onClick={() => act("send", {}, "Sending approved emails").then((r: Any) => r && flash(`Sent ${r.sent}`, (r.notes || []).join(" "), "info"))}><Send className="size-4" />Send approved now</Button>
       </PageHeader>

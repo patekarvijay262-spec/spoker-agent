@@ -51,7 +51,7 @@ export default function InboxPage() {
   const coName = (id: string) => brandName(data.companies.find((c: Any) => c.id === id) || { name: id || "General" });
   return (
     <>
-      <PageHeader title="Replies" description="What sponsors wrote back, and the few calls only you should make.">
+      <PageHeader tour="replies" title="Replies" description="What sponsors wrote back, and the few calls only you should make.">
         <Button variant="outline" disabled={!!busy || !data.settings.gmail} onClick={() => act("replies", {}, "Checking Gmail for replies").then((r: Any) => r && flash(`Checked ${r.checked} threads`, `${r.found} new replies`, "info"))}><RefreshCw className="size-4" />Check Gmail for replies</Button>
       </PageHeader>
       {!can("approver") && <p className="text-sm text-muted-foreground">Decisions here need an approver.</p>}
