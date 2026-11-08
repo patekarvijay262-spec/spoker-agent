@@ -19,8 +19,8 @@ export default function SponsorsPage() {
   return (
     <>
       <PageHeader title="Sponsor updates" description="Keep signed sponsors close so they renew." />
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <section className="space-y-3 rounded-xl border bg-card p-5">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        <section className="space-y-3 rounded-xl border bg-card p-4">
           <label htmlFor="news" className="font-medium">What happened this fortnight</label>
           <Textarea id="news" className="min-h-44" value={news} onChange={(e) => setNews(e.target.value)} placeholder={"Registrations crossed 12,400.\nSchedule for the 18 sports is live.\nYour sampling zone is confirmed next to the main ground."} />
           <div className="flex flex-wrap items-center gap-3">
@@ -28,8 +28,8 @@ export default function SponsorsPage() {
             {!signed.length && <span className="text-sm text-muted-foreground">Updates start once a sponsor reaches the MOU stage.</span>}
           </div>
         </section>
-        <section className="space-y-2 rounded-xl border bg-card p-5">
-          <h2 className="font-medium">Signed and closing</h2>
+        <section className="space-y-2 rounded-xl border bg-card p-4">
+          <h2 className="font-semibold tracking-tight">Signed and closing</h2>
           {signed.map((c: Any) => (
             <button key={c.id} type="button" onClick={() => openCompany(c.id)} className="flex w-full items-center gap-3 rounded-lg border p-2.5 text-left hover:border-primary/50"><span className="flex-1 font-semibold">{brandName(c)}</span><StageBadge stage={c.stage} /></button>
           ))}

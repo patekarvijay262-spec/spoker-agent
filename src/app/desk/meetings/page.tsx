@@ -16,7 +16,7 @@ export default function MeetingsPage() {
       {!list.length ? <EmptyState icon={CalendarClock} title="No meetings yet">When a sponsor asks to talk, open the company and use Book a meeting.</EmptyState> : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
           {list.map((m: Any) => (
-            <article key={m.id} className="space-y-3 rounded-xl border bg-card p-5">
+            <article key={m.id} className="space-y-3 rounded-xl border bg-card p-4">
               <div className="flex items-center gap-3">
 
                 <div className="min-w-0 flex-1"><button type="button" className="font-semibold hover:underline" onClick={() => openCompany(m.company_id)}>{brandName(co(m.company_id))}</button><div className="text-xs text-muted-foreground">Meeting {m.n}{m.start_at ? ` · ${when(m.start_at)}` : ""}{m.minutes ? ` · ${m.minutes} min` : ""}</div></div>

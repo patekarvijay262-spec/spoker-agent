@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { usePathname, useRouter } from "next/navigation";
 
-import { Building2, Loader2, MessageCircle, Mic, Search } from "lucide-react";
+import { Building2, Loader2, Mic, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -55,7 +55,7 @@ export function DeskHeader() {
           <Search className="size-4" />
         </button>
         <Separator orientation="vertical" className="mx-1 data-[orientation=vertical]:h-4 data-[orientation=vertical]:self-center" />
-        <div className="hidden text-sm font-medium lg:block">{title}</div>
+        <div className="hidden text-sm font-semibold tracking-tight lg:block">{title}</div>
         <div className="ml-auto flex items-center gap-1">
           {(busy || progress) && (
             <div className="mr-2 hidden items-center gap-2 text-xs text-muted-foreground md:flex" role="status" aria-live="polite" title={label}>
@@ -65,9 +65,6 @@ export function DeskHeader() {
             </div>
           )}
           <VoiceButton className="hidden md:inline-flex" />
-          <Button variant="ghost" size="sm" className="hidden md:inline-flex" data-tour="ask" onClick={() => setChatOpen(true)}>
-            <MessageCircle />Ask
-          </Button>
           <LayoutControls />
           <ThemeSwitcher />
         </div>

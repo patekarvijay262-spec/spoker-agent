@@ -63,7 +63,7 @@ export default function OutboxPage() {
             {!list.length && <div className="p-8 text-center text-sm text-muted-foreground">{tab === "draft" ? "Nothing waiting for you." : "Empty."}</div>}
           </div>
         </div>
-        <div className={cn("min-w-0 p-5 md:p-7", !reading && "hidden lg:block")}>
+        <div className={cn("min-w-0 p-4 md:p-5", !reading && "hidden lg:block")}>
           <button type="button" onClick={() => setReading(false)} className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground lg:hidden"><ArrowLeft className="size-4" />All emails</button>
           {!cur ? (
             <EmptyState icon={InboxIcon} title={tab === "draft" ? "Nothing to approve" : "Pick an email"}>{tab === "draft" ? "The agents put every draft here before it can go out." : "Choose one on the left to read it."}</EmptyState>

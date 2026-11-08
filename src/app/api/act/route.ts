@@ -17,6 +17,7 @@ const ROLE: Record<string, Role> = {
   mou: "operator", send_mou: "operator", nurture: "operator", replies: "operator", reconcile: "operator", contact_reviewed: "operator", set_primary: "operator", prepare_outreach: "operator",
   lock_floor: "approver", approve: "approver", approve_many: "approver", reject: "approver", send: "approver", resolve: "approver",
   confirm_meeting: "approver", stage: "approver", suppress: "approver", delivery: "approver",
+  tour_seen: "readonly",
   settings: "admin", reset: "admin", connector_save: "admin", connector_remove: "admin", tool_add: "admin", tool_remove: "admin", forget: "admin", user_add: "admin", user_update: "admin", sessions_revoke: "admin", google_disconnect: "admin",
 };
 const STAGES = new Set(["PROSPECT", "QUALIFIED", "CONTACT_READY", "CONTACTED", "FOLLOWUP_1", "FOLLOWUP_2", "REPLIED", "MEETING_REQUESTED", "MEETING_SCHEDULED", "MEETING_DONE", "NEGOTIATING", "MOU_DRAFTED", "MOU_SENT", "MOU_SIGNED", "PO_RECEIVED", "INVOICED", "PAID", "INKIND_CONFIRMED", "NURTURE", "DELIVERED", "REPORTED", "RENEWAL", "NO_RESPONSE", "LOST", "OPTED_OUT", "BOUNCED", "DISQUALIFIED", "PARKED"]);
@@ -144,6 +145,8 @@ async function run(b: any, me: User, origin: string) {
       if (!STAGES.has(st)) throw new Error("Unknown stage " + st);
       await L.setStage(String(b.company_id), st, String(b.reason || "manual"), who); return { ok: true };
     }
+    // The guided tour shows once per person, on any device.
+    case "tour_seen": await setSetting(`tour_seen:${me.id}`, "1"); return { ok: true };
     case "settings": {
       if (b.daily_reminder !== undefined) await setSetting("daily_reminder", b.daily_reminder ? "1" : "0");
       for (const k of ["cap_new_per_day", "cap_total_per_day", "spacing_sec"]) if (b[k] !== undefined) {

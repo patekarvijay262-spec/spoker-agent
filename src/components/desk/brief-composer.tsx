@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "cn";
-import { ChevronDown, Loader2, Plus, X } from "lucide-react";
+import { ChevronDown, Loader2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,20 +12,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { readBrief } from "@/lib/brief-parse";
 import { SPONSOR_CATEGORIES } from "@/lib/sponsor-categories";
 
+import { MicButton, PlusMenu } from "./composer-tools";
 import { useDesk } from "./desk-provider";
 import type { Any } from "./format";
 
 const EXAMPLE = "Aavhan 2027, IIT Bombay, 24 to 26 Jan 2027, Mumbai, 15,000 footfall, college athletes and students from 120 colleges, goal ₹50 lakh, IIT Bombay Gymkhana, Powai, Mumbai 400076";
-const ADD: Record<string, string> = {
-  name: "Your Event 2027", organiser: "Organising institute or club", dates: "dates like 24 to 26 Jan 2027", city: "city", footfall: "15,000 footfall",
-  audience: "who attends, e.g. college students and young professionals", goal: "goal ₹50 lakh", address: "postal address with 6-digit PIN",
-};
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+/** A small titled card; three of them sit side by side under the composer on wide screens. */
+function Card({ title, hint, children, className }: { title: string; hint?: string; children: React.ReactNode; className?: string }) {
   return (
-    <section className="grid gap-4 border-t py-8 md:grid-cols-[14rem_minmax(0,1fr)] md:gap-10">
-      <div className="space-y-1"><h2 className="font-medium">{title}</h2>{hint && <p className="text-sm text-muted-foreground">{hint}</p>}</div>
-      <div className="min-w-0 space-y-4">{children}</div>
+    <section className={cn("min-w-0 space-y-2.5 rounded-xl border bg-card p-3.5", className)}>
+      <div><h2 className="text-sm font-semibold tracking-tight">{title}</h2>{hint && <p className="text-xs text-muted-foreground">{hint}</p>}</div>
+      {children}
     </section>
   );
 }
@@ -56,18 +54,6 @@ export function BriefComposer({ onDone, initial = "" }: { onDone?: () => void; i
   const area = useRef<HTMLTextAreaElement>(null);
   const read = useMemo(() => readBrief(text), [text]);
 
-  function add(key: string) {
-    const sep = text.trim() ? (text.trim().endsWith(",") ? " " : ", ") : "";
-    const snippet = ADD[key];
-    const next = text.trimEnd() + sep + snippet;
-    setText(next);
-    requestAnimationFrame(() => {
-      const el = area.current;
-      if (!el) return;
-      el.focus();
-      el.setSelectionRange(next.length - snippet.length, next.length);
-    });
-  }
   function addBrand() {
     const b = brandIn.split(",").map((x) => x.trim()).filter(Boolean);
     if (b.length) setBrands([...new Set([...brands, ...b])].slice(0, 25));
@@ -83,78 +69,88 @@ export function BriefComposer({ onDone, initial = "" }: { onDone?: () => void; i
     if (r?.profile) { setClarify(null); try { localStorage.removeItem(draftKey); } catch { /* storage blocked */ } onDone?.(); }
   }
 
+  const append = (t: string) => {
+    if (!t) return;
+    setText((cur) => { const c = cur.trimEnd(); return c ? `${c}${/[.,\n]$/.test(c) ? " " : ", "}${t}` : t; });
+  };
+  const lbl = "text-xs text-muted-foreground";
+
   return (
-    <div>
-      <Section title="Your event" hint="Describe it the way you would to a sponsor.">
-        <div className="space-y-2">
-          <Textarea ref={area} value={text} onChange={(e) => setText(e.target.value)} rows={5} aria-label="Describe your event"
-            placeholder="Name and year, organiser, dates, city, footfall, who attends, goal in ₹, postal address with PIN"
-            className="min-h-32 resize-y text-base leading-relaxed" />
-          <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-            <span>Name and dates are enough to start. Add the rest whenever you like.</span>
-            {!text && <button type="button" onClick={() => setText(EXAMPLE)} className="underline-offset-2 hover:text-foreground hover:underline">Use an example</button>}
+    <div className="space-y-3">
+      {/* The event, the way you would tell a sponsor. Type, speak, or add files. */}
+      <div className="rounded-2xl border bg-card shadow-sm transition focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/20" data-tour="composer">
+        <textarea ref={area} value={text} onChange={(e) => setText(e.target.value)} rows={4} aria-label="Describe your event"
+          placeholder="Tell the desk about your event: name and year, organiser, dates, city, footfall, who attends, goal in ₹, postal address with PIN"
+          className="block max-h-80 min-h-28 w-full resize-y rounded-t-2xl bg-transparent px-4 pt-3.5 pb-1 text-[0.9375rem] leading-relaxed outline-none placeholder:text-muted-foreground" />
+        <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
+          <PlusMenu onText={append} />
+          <MicButton onText={append} />
+          <span className="ml-1 hidden text-xs text-muted-foreground sm:inline">{text ? "Name and dates are enough to start." : <>Name and dates are enough. <button type="button" onClick={() => setText(EXAMPLE)} className="underline underline-offset-2 hover:text-foreground">Use an example</button></>}</span>
+          <div className="ml-auto flex items-center gap-2">
+            {!sender.name && <span className="text-xs text-muted-foreground">Add your name below</span>}
+            <Button size="sm" className="rounded-full" disabled={!!busy || !read.fields[0].found || !sender.name} onClick={() => submit()}>
+              {busy?.op === "brief" ? <><Loader2 className="animate-spin" />Packaging…</> : "Package my event"}
+            </Button>
           </div>
         </div>
-      </Section>
+      </div>
 
-      <Section title="Signature" hint="Signs every email.">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="space-y-1.5"><Label htmlFor="snd-name">Name</Label><Input id="snd-name" value={sender.name} onChange={(e) => setSender({ ...sender, name: e.target.value })} /></div>
-          <div className="space-y-1.5"><Label htmlFor="snd-title">Title</Label><Input id="snd-title" value={sender.title} onChange={(e) => setSender({ ...sender, title: e.target.value })} placeholder="Head, Sponsorships" /></div>
-          <div className="space-y-1.5"><Label htmlFor="snd-phone">Phone</Label><Input id="snd-phone" value={sender.phone} onChange={(e) => setSender({ ...sender, phone: e.target.value })} inputMode="tel" /></div>
-        </div>
-      </Section>
+      <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-3">
+        <Card title="Signature" hint="Signs every email.">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="col-span-2 space-y-1"><Label htmlFor="snd-name" className={lbl}>Name</Label><Input id="snd-name" value={sender.name} onChange={(e) => setSender({ ...sender, name: e.target.value })} /></div>
+            <div className="space-y-1"><Label htmlFor="snd-title" className={lbl}>Title</Label><Input id="snd-title" value={sender.title} onChange={(e) => setSender({ ...sender, title: e.target.value })} placeholder="Head, Sponsorships" /></div>
+            <div className="space-y-1"><Label htmlFor="snd-phone" className={lbl}>Phone</Label><Input id="snd-phone" value={sender.phone} onChange={(e) => setSender({ ...sender, phone: e.target.value })} inputMode="tel" /></div>
+          </div>
+        </Card>
 
-      <Section title="Past sponsors" hint="They show the level of company you can reach, and they are your warmest leads.">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5"><Label htmlFor="lnk-web">Website</Label><Input id="lnk-web" value={links.website} onChange={(e) => setLinks({ ...links, website: e.target.value })} placeholder="aavhan.iitb.ac.in" inputMode="url" /></div>
-          <div className="space-y-1.5"><Label htmlFor="lnk-ig">Instagram</Label><Input id="lnk-ig" value={links.instagram} onChange={(e) => setLinks({ ...links, instagram: e.target.value })} placeholder="@aavhan_iitb" /></div>
-        </div>
-        <div className="space-y-1.5"><Label htmlFor="lnk-known">Past sponsors you remember</Label><Input id="lnk-known" value={links.known} onChange={(e) => setLinks({ ...links, known: e.target.value })} placeholder="Red Bull, boAt, Zomato" /></div>
-        <p className="text-xs text-muted-foreground">The desk also reads your website and Instagram for more.</p>
-      </Section>
-
-      <Section title="Preferences" hint="Optional. Otherwise the desk picks what fits.">
-        {!prefsOpen ? (
-          <Button variant="outline" size="sm" onClick={() => setPrefsOpen(true)}>Choose categories and brands<ChevronDown /></Button>
-        ) : (
-          <>
-            <div className="flex flex-wrap gap-1.5">
-              {SPONSOR_CATEGORIES.map((c) => {
-                const on = cats.includes(c.id);
-                return (
-                  <button key={c.id} type="button" aria-pressed={on} title={c.hint} onClick={() => setCats(on ? cats.filter((x) => x !== c.id) : [...cats, c.id])}
-                    className={cn("rounded-md border px-2.5 py-1 text-sm transition", on ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{c.label}</button>
-                );
-              })}
+        <Card title="Past sponsors" hint="They set the level, and they are your warmest leads.">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1"><Label htmlFor="lnk-web" className={lbl}>Website</Label><Input id="lnk-web" value={links.website} onChange={(e) => setLinks({ ...links, website: e.target.value })} placeholder="techfest.org" inputMode="url" /></div>
+            <div className="space-y-1"><Label htmlFor="lnk-ig" className={lbl}>Instagram</Label><Input id="lnk-ig" value={links.instagram} onChange={(e) => setLinks({ ...links, instagram: e.target.value })} placeholder="@techfest_iitb" /></div>
+            <div className="col-span-2 space-y-1"><Label htmlFor="lnk-known" className={lbl}>Names you remember</Label>
+              <div className="flex items-center gap-1"><Input id="lnk-known" value={links.known} onChange={(e) => setLinks({ ...links, known: e.target.value })} placeholder="Red Bull, boAt, Zomato" />
+                <MicButton onText={(t) => setLinks((l) => ({ ...l, known: l.known ? `${l.known}, ${t}` : t }))} /></div>
             </div>
-            <form onSubmit={(e) => { e.preventDefault(); addBrand(); }} className="flex gap-2">
-              <Input value={brandIn} onChange={(e) => setBrandIn(e.target.value)} placeholder="Brands you want, e.g. Red Bull, Decathlon" aria-label="Brands you have in mind" />
-              <Button type="submit" variant="outline" disabled={!brandIn.trim()}>Add</Button>
-            </form>
-            {!!brands.length && (
-              <div className="flex flex-wrap gap-1.5">
-                {brands.map((b) => <span key={b} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-sm">{b}<button type="button" aria-label={`Remove ${b}`} onClick={() => setBrands(brands.filter((x) => x !== b))} className="text-muted-foreground hover:text-foreground"><X className="size-3" /></button></span>)}
+          </div>
+        </Card>
+
+        <Card title="Preferences" hint="Optional. Otherwise the desk picks what fits.">
+          {!prefsOpen ? (
+            <Button variant="outline" size="sm" onClick={() => setPrefsOpen(true)}>Choose categories and brands<ChevronDown /></Button>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-1">
+                {SPONSOR_CATEGORIES.map((c) => {
+                  const on = cats.includes(c.id);
+                  return (
+                    <button key={c.id} type="button" aria-pressed={on} title={c.hint} onClick={() => setCats(on ? cats.filter((x) => x !== c.id) : [...cats, c.id])}
+                      className={cn("rounded-full border px-2 py-0.5 text-xs transition", on ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{c.label}</button>
+                  );
+                })}
               </div>
-            )}
-          </>
-        )}
-      </Section>
+              <form onSubmit={(e) => { e.preventDefault(); addBrand(); }} className="flex gap-1.5">
+                <Input value={brandIn} onChange={(e) => setBrandIn(e.target.value)} placeholder="Brands you want" aria-label="Brands you have in mind" />
+                <Button type="submit" size="sm" variant="outline" disabled={!brandIn.trim()}>Add</Button>
+              </form>
+              {!!brands.length && (
+                <div className="flex flex-wrap gap-1">
+                  {brands.map((b) => <span key={b} className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">{b}<button type="button" aria-label={`Remove ${b}`} onClick={() => setBrands(brands.filter((x) => x !== b))} className="text-muted-foreground hover:text-foreground"><X className="size-3" /></button></span>)}
+                </div>
+              )}
+            </>
+          )}
+        </Card>
+      </div>
 
       {clarify && (
-        <Section title="A few questions" hint={clarify.found}>
+        <Card title="A few questions" hint={clarify.found}>
           <ol className="list-decimal space-y-1 pl-5 text-sm">{(clarify.questions || []).map((q: string, i: number) => <li key={i}>{q}</li>)}</ol>
-          <Textarea value={answers} onChange={(e) => setAnswers(e.target.value)} placeholder="Your answers" aria-label="Your answers" />
-          <Button disabled={!!busy || !answers.trim()} onClick={() => submit(answers)}>Answer and continue</Button>
-        </Section>
+          <div className="flex items-start gap-1"><Textarea value={answers} onChange={(e) => setAnswers(e.target.value)} placeholder="Your answers" aria-label="Your answers" />
+            <MicButton onText={(t) => setAnswers((a) => (a ? `${a} ${t}` : t))} /></div>
+          <Button size="sm" disabled={!!busy || !answers.trim()} onClick={() => submit(answers)}>Answer and continue</Button>
+        </Card>
       )}
-
-      <div className="flex items-center justify-end gap-3 border-t pt-6">
-        {!sender.name && <span className="text-xs text-muted-foreground">Add your name to continue</span>}
-        <Button size="lg" disabled={!!busy || !read.fields[0].found || !sender.name} onClick={() => submit()}>
-          {busy?.op === "brief" ? <><Loader2 className="animate-spin" />Packaging…</> : "Package my event"}
-        </Button>
-      </div>
     </div>
   );
 }

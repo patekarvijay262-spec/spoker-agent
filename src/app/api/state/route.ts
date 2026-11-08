@@ -25,7 +25,7 @@ export const GET = wrap(async (req, user) => {
   // Only the people of this desk. Its admin manages them; nobody sees another desk's team.
   const people = await (await gdb()).q(`SELECT id, email, name, role, disabled, created_at, last_login_at FROM users WHERE workspace_id=$1 ORDER BY created_at`, [user.ws]);
   return {
-    me: { id: user.id, name: user.name, email: user.email, role: user.role, owner: user.owner, viewing: user.viewing || null },
+    me: { id: user.id, name: user.name, email: user.email, role: user.role, owner: user.owner, viewing: user.viewing || null, tour_seen: (await getSetting(`tour_seen:${user.id}`, "")) === "1" },
     users: user.role === "admin" ? people : undefined,
     event: await getEvent(), companies, contacts, messages, replies, exceptions, deals, meetings, decks, log,
     settings: {

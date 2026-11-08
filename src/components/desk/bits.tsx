@@ -11,10 +11,10 @@ import { type Any, STAGE_LABEL, VLABEL } from "./format";
 /** Page title row. `eyebrow` is accepted for older call sites but no longer shown: the sidebar already says where you are. */
 export function PageHeader({ title, description, children, tour }: { eyebrow?: string; title: string; description?: ReactNode; children?: ReactNode; tour?: string }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4" data-tour={tour}>
-      <div className="min-w-0 space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-balance">{title}</h1>
-        {description && <p className="max-w-2xl text-sm text-muted-foreground">{description}</p>}
+    <div className="flex flex-wrap items-end justify-between gap-3" data-tour={tour}>
+      <div className="min-w-0 space-y-0.5">
+        <h1 className="text-[1.625rem] leading-tight font-bold tracking-tight text-balance">{title}</h1>
+        {description && <p className="max-w-2xl text-[0.8125rem] text-muted-foreground">{description}</p>}
       </div>
       {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
     </div>
@@ -75,10 +75,10 @@ export function ScoreBar({ label, value }: { label: string; value?: number | nul
 /** A KPI tile: label, big number, one quiet line underneath. */
 export function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: ReactNode; icon?: Any; tone?: string }) {
   return (
-    <div className="min-w-0 rounded-xl border bg-card p-4 md:p-5">
-      <div className="truncate text-sm text-muted-foreground">{label}</div>
-      <div className="mt-2 truncate text-2xl leading-none tracking-tight num md:text-3xl">{value}</div>
-      {sub && <div className="mt-2 text-xs text-muted-foreground">{sub}</div>}
+    <div className="min-w-0 rounded-xl border bg-card px-3.5 py-3">
+      <div className="truncate text-xs font-medium text-muted-foreground">{label}</div>
+      <div className="mt-1.5 truncate text-2xl leading-none font-semibold tracking-tight num">{value}</div>
+      {sub && <div className="mt-1.5 text-xs text-muted-foreground">{sub}</div>}
     </div>
   );
 }
@@ -88,22 +88,22 @@ export function Panel({ title, description, action, children, className }: { tit
   return (
     <section className={cn("rounded-xl border bg-card", className)}>
       {(title || action) && (
-        <div className="flex flex-wrap items-start justify-between gap-2 px-5 pt-5">
+        <div className="flex flex-wrap items-start justify-between gap-2 px-4 pt-3.5">
           <div className="min-w-0 space-y-0.5">
-            {title && <h2 className="font-medium">{title}</h2>}
-            {description && <p className="text-sm text-muted-foreground">{description}</p>}
+            {title && <h2 className="text-[0.9375rem] font-semibold tracking-tight">{title}</h2>}
+            {description && <p className="text-xs text-muted-foreground">{description}</p>}
           </div>
           {action}
         </div>
       )}
-      <div className="p-5">{children}</div>
+      <div className="px-4 pt-3 pb-4">{children}</div>
     </section>
   );
 }
 
 export function EmptyState({ title, children, action }: { icon?: Any; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed px-6 py-14 text-center">
+    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed px-6 py-8 text-center">
       <div className="font-medium">{title}</div>
       {children && <div className="max-w-sm text-sm text-muted-foreground">{children}</div>}
       {action && <div className="mt-2">{action}</div>}

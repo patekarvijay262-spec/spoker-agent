@@ -77,7 +77,7 @@ function deskCommand(q: string, raw: string, co: { id: string; name: string } | 
   const lang = q.match(/\b(?:answer|reply|speak|talk|respond)(?: to me)? in (\w+)\b|\b(?:change|switch|set) (?:the )?language to (\w+)\b|^(\w+) (?:mein|me) (?:bolo|baat karo|jawab do)$/);
   const langName = lang && (lang[1] || lang[2] || lang[3]);
   if (langName && LANG_CODES[langName]) return { kind: "lang", code: LANG_CODES[langName], label: `Answers in ${langName[0].toUpperCase()}${langName.slice(1)}` };
-  if (/^(open (the )?(chat|assistant)|ask the desk|talk to the desk)$/.test(q)) return { kind: "ui", action: "chat", label: "Ask the desk" };
+  if (/^(open (the )?(chat|assistant)|ask the desk|ask max|open max|talk to max|talk to the desk)$/.test(q)) return { kind: "ui", action: "chat", label: "Ask Max" };
   if (/\b(sign|log) ?out\b/.test(q)) return act("signout", {}, "Sign out");
   if (/\b(new|write|edit|start|change)( a| the| my)? (new )?(event )?brief\b/.test(q)) return { kind: "navigate", to: "/desk/brief", label: "Event brief" };
 

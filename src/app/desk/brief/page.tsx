@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/desk/bits";
 import { BriefComposer } from "@/components/desk/brief-composer";
-import { ConnectorsPanel } from "@/components/desk/connectors-panel";
+import { ConnectorStrip, MicButton } from "@/components/desk/composer-tools";
 import { useDesk } from "@/components/desk/desk-provider";
 import { type Any, api, host, inr, lakh } from "@/components/desk/format";
 import { SPONSOR_CATEGORIES } from "@/lib/sponsor-categories";
@@ -18,9 +18,9 @@ import { SPONSOR_CATEGORIES } from "@/lib/sponsor-categories";
 // Compact cards that sit two to a row on wide screens, so most of the event fits in one or two scrolls.
 function Section({ title, hint, children, tour, wide }: { title: string; hint?: ReactNode; children: ReactNode; tour?: string; wide?: boolean }) {
   return (
-    <section className={cn("min-w-0 space-y-3 rounded-xl border p-4 md:p-5", wide && "lg:col-span-2")} data-tour={tour}>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"><h2 className="font-medium">{title}</h2>{hint && <div className="text-xs text-muted-foreground">{hint}</div>}</div>
-      <div className="min-w-0 space-y-3">{children}</div>
+    <section className={cn("min-w-0 space-y-2.5 rounded-xl border bg-card p-3.5", wide && "lg:col-span-2")} data-tour={tour}>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"><h2 className="text-[0.9375rem] font-semibold tracking-tight">{title}</h2>{hint && <div className="text-xs text-muted-foreground">{hint}</div>}</div>
+      <div className="min-w-0 space-y-2.5">{children}</div>
     </section>
   );
 }
@@ -94,9 +94,9 @@ function Tiers() {
   };
   return (
     <Section wide title="Prices" hint={<span title={e.pricing_basis}>Suggested from your audience size. Change anything, any time.</span>}>
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border xl:grid-cols-4">
         {tiers.map((t: Any, i: number) => (
-          <div key={i} className="flex flex-col gap-1.5 bg-card p-3">
+          <div key={i} className="flex flex-col gap-1 bg-card px-3 py-2.5">
             {edit ? (
               <>
                 <Input value={t.name} onChange={(x) => setTiers(tiers.map((y, j) => (j === i ? { ...y, name: x.target.value } : y)))} aria-label="Tier name" />
@@ -106,7 +106,7 @@ function Tiers() {
             ) : (
               <>
                 <div className="text-sm text-muted-foreground">{t.name}</div>
-                <div className="text-xl tracking-tight num">{lakh(t.price_inr)}</div>
+                <div className="text-xl font-semibold tracking-tight num">{lakh(t.price_inr)}</div>
                 <div className="line-clamp-2 text-xs text-muted-foreground" title={t.deliverables}>{t.deliverables}</div>
               </>
             )}
@@ -165,6 +165,7 @@ function PastSponsors() {
       {can("operator") && (
         <form className="flex gap-2" onSubmit={(x) => { x.preventDefault(); if (names.trim()) addNames(); }}>
           <Input value={names} onChange={(x) => setNames(x.target.value)} placeholder="Add past sponsors, comma separated: Red Bull, SBI, boAt" aria-label="Add past sponsors" />
+          <MicButton onText={(t) => setNames((n) => (n ? `${n}, ${t}` : t))} />
           <Button type="submit" variant="outline" disabled={!!busy || !names.trim()}>Add</Button>
         </form>
       )}
@@ -234,7 +235,7 @@ function Prefs() {
           );
         })}
       </div>
-      <Input value={brands} onChange={(x) => setBrands(x.target.value)} placeholder="Brands you want, comma separated" aria-label="Brands you want" />
+      <div className="flex items-center gap-1"><Input value={brands} onChange={(x) => setBrands(x.target.value)} placeholder="Brands you want, comma separated" aria-label="Brands you want" /><MicButton onText={(t) => setBrands((b) => (b ? `${b}, ${t}` : t))} /></div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
         <span>People to find per company</span>
         <NumberBox value={people} max={50} label="People to find per company" onChange={setPeople} className="w-16 rounded-md border" />
@@ -279,16 +280,14 @@ export default function BriefPage() {
       <PageHeader title={e.name} description={e.one_line}>
         <Button variant="outline" onClick={() => setRedo(true)}>New brief</Button>
       </PageHeader>
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
         <Tiers />
         <Details />
         <PastSponsors />
         <Prefs />
         <Sources />
-        <Section wide tour="event-connectors" title="Connectors" hint="Services and tools this desk uses: Gmail, Apollo, Claude, Canva and more.">
-          <ConnectorsPanel compact />
-        </Section>
       </div>
+      <ConnectorStrip />
     </>
   );
 }

@@ -43,7 +43,7 @@ export default function PeoplePage() {
       </div>
 
       {!data.contacts.length ? <EmptyState icon={Users} title="No people yet">Score a company to find its decision makers.</EmptyState> : tab === "dm" ? (
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
           <div className="space-y-2">
             {rows.map(({ co, p }: Any) => (
               <button key={co.id} type="button" onClick={() => setSel(sel === co.id ? "" : co.id)} className={cn("flex w-full items-center gap-3 rounded-lg border bg-card p-3 text-left transition hover:border-primary/50", sel === co.id && "border-primary ring-2 ring-primary/15", needsCheck(p) && "border-warning/40")}>
@@ -62,7 +62,7 @@ export default function PeoplePage() {
           <div className="space-y-3 xl:sticky xl:top-20 xl:self-start">
             {cur ? (
               <>
-                <div className="flex items-center justify-between"><h2 className="font-medium">{brandName(cur.co)}</h2><Button variant="ghost" size="sm" onClick={() => openCompany(cur.co.id)}>Open company →</Button></div>
+                <div className="flex items-center justify-between"><h2 className="font-semibold tracking-tight">{brandName(cur.co)}</h2><Button variant="ghost" size="sm" onClick={() => openCompany(cur.co.id)}>Open company →</Button></div>
                 {cur.co.angle && <p className="rounded-lg bg-muted/50 p-3 text-sm">{cur.co.angle}</p>}
                 {[...byCo[cur.co.id]].sort((a: Any, b: Any) => (b.is_primary - a.is_primary) || ((b.relevance ?? -1) - (a.relevance ?? -1))).map((ct: Any) => <ContactCard key={ct.id} ct={ct} co={cur.co} />)}
               </>

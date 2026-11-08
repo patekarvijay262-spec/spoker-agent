@@ -17,7 +17,7 @@ import { actorName, type Any, ago, brandName, clock, humanLog, isDecision, isHum
 
 function StepCard({ n, title, icon: Icon, href, status, children, tour }: { n: number; title: string; icon: Any; href: string; status: React.ReactNode; children?: React.ReactNode; tour?: string }) {
   return (
-    <div className="flex flex-col gap-3 rounded-xl border p-5" data-tour={tour}>
+    <div className="flex flex-col gap-3 rounded-xl border bg-card p-4" data-tour={tour}>
       <Link href={href} className="group flex items-center gap-3">
         <span className="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-sm text-muted-foreground num">{n}</span>
         <span className="flex-1 font-medium group-hover:underline">{title}</span>
@@ -31,18 +31,18 @@ function StepCard({ n, title, icon: Icon, href, status, children, tour }: { n: n
 
 function Welcome() {
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-8 py-12 md:py-20">
+    <div className="mx-auto flex max-w-2xl flex-col gap-6 py-8 md:py-12">
       <div className="space-y-3">
-        <h1 className="text-3xl font-semibold tracking-tight text-balance">Start wherever you like</h1>
+        <h1 className="text-[1.75rem] leading-tight font-bold tracking-tight text-balance">Start wherever you like</h1>
         <p className="text-muted-foreground">Most teams begin with the event name and dates. You can add the rest any time.</p>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Link href="/desk/brief" className="rounded-xl border p-5 transition hover:bg-muted/50">
+        <Link href="/desk/brief" className="rounded-xl border bg-card p-4 transition hover:bg-muted/50">
           <ClipboardPen className="mb-3 size-5 text-muted-foreground" />
           <div className="font-medium">Describe your event</div>
           <div className="text-sm text-muted-foreground">Name, dates and city are enough to begin.</div>
         </Link>
-        <Link href="/desk/draft" className="rounded-xl border p-5 transition hover:bg-muted/50">
+        <Link href="/desk/draft" className="rounded-xl border bg-card p-4 transition hover:bg-muted/50">
           <PenLine className="mb-3 size-5 text-muted-foreground" />
           <div className="font-medium">Write your email draft</div>
           <div className="text-sm text-muted-foreground">The desk fits it to every company and person.</div>
@@ -60,9 +60,9 @@ function Today() {
   const on = data.settings?.daily_reminder !== false;
   const gmail = !!data.settings?.gmail;
   return (
-    <section className="rounded-xl bg-muted/40 p-5" data-tour="today">
+    <section className="rounded-xl bg-muted/50 p-4" data-tour="today">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-medium">Today</h2>
+        <h2 className="font-semibold tracking-tight">Today</h2>
         {can("admin") && gmail && (
           <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
             <input type="checkbox" checked={on} onChange={() => act("settings", { daily_reminder: !on }, "Saving")} />

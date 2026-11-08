@@ -19,7 +19,7 @@ function Decision({ x }: { x: Any }) {
   const [e, setE] = useState({ subject: x.draft_subject || "", body: x.draft_body || "" });
   const c = data.companies.find((y: Any) => y.id === x.company_id);
   return (
-    <article className="space-y-3 rounded-xl border bg-card p-5">
+    <article className="space-y-3 rounded-xl border bg-card p-4">
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
           <span className="rounded-full bg-muted px-2 py-0.5 text-[0.7rem] font-semibold text-foreground">{KIND[x.kind] || x.kind}</span>
@@ -55,9 +55,9 @@ export default function InboxPage() {
         <Button variant="outline" disabled={!!busy || !data.settings.gmail} onClick={() => act("replies", {}, "Checking Gmail for replies").then((r: Any) => r && flash(`Checked ${r.checked} threads`, `${r.found} new replies`, "info"))}><RefreshCw className="size-4" />Check Gmail for replies</Button>
       </PageHeader>
       {!can("approver") && <p className="text-sm text-muted-foreground">Decisions here need an approver.</p>}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div className="space-y-4">
-          <h2 className="flex items-center gap-2 font-medium"><Gavel className="size-5 text-muted-foreground" />Decisions <span className="text-muted-foreground num">{exs.length}</span></h2>
+          <h2 className="flex items-center gap-2 font-semibold tracking-tight"><Gavel className="size-5 text-muted-foreground" />Decisions <span className="text-muted-foreground num">{exs.length}</span></h2>
           {exs.map((x: Any) => <Decision key={x.id} x={x} />)}
           {!exs.length && <EmptyState icon={CheckCircle2} title="Nothing needs you">Offers below your lowest price and anything unusual would show here.</EmptyState>}
           {notes.length > 0 && (
@@ -73,7 +73,7 @@ export default function InboxPage() {
           )}
         </div>
         <section className="space-y-3">
-          <h2 className="flex items-center gap-2 font-medium"><MailCheck className="size-5 text-muted-foreground" />Replies <span className="text-muted-foreground num">{data.replies.length}</span></h2>
+          <h2 className="flex items-center gap-2 font-semibold tracking-tight"><MailCheck className="size-5 text-muted-foreground" />Replies <span className="text-muted-foreground num">{data.replies.length}</span></h2>
           <p className="text-sm text-muted-foreground" title="Read by fixed rules, not a model, so a sponsor email can never instruct the desk.">Any reply stops cold mail to that company.</p>
           <div className="space-y-2">
             {data.replies.map((r: Any) => (

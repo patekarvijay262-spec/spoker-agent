@@ -30,7 +30,7 @@ function CompanyCard({ c, primary }: { c: Any; primary: Any }) {
   const brand = brandName(c);
   return (
     <article className="flex flex-col rounded-xl border bg-card transition hover:border-foreground/20">
-      <button type="button" onClick={() => openCompany(c.id)} className="flex flex-1 flex-col gap-3 p-5 text-left">
+      <button type="button" onClick={() => openCompany(c.id)} className="flex flex-1 flex-col gap-2.5 p-4 text-left">
         <div className="flex w-full items-start gap-3">
 
           <div className="min-w-0 flex-1">
@@ -144,10 +144,10 @@ export default function CompaniesPage() {
           </table>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-5">
           {groups.map((g) => (
             <section key={g.key} className="space-y-3">
-              <div className="flex items-baseline gap-2"><h2 className="font-medium">{g.title}</h2><span className="text-sm text-muted-foreground num">{g.items.length}</span></div>
+              <div className="flex items-baseline gap-2"><h2 className="font-semibold tracking-tight">{g.title}</h2><span className="text-sm text-muted-foreground num">{g.items.length}</span></div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">{g.items.map((c) => <CompanyCard key={c.id} c={c} primary={primaryOf(c.id)} />)}</div>
             </section>
           ))}

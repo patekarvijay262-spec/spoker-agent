@@ -44,14 +44,14 @@ export default function HelpPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {shown.map((h, n) => (
-          <section key={h.id} id={h.id} className="scroll-mt-20 space-y-3 rounded-xl border p-5">
-            <h2 className="flex items-baseline gap-2 font-medium"><span className="text-sm text-muted-foreground num">{n + 1}.</span>{h.title}</h2>
+          <section key={h.id} id={h.id} className="scroll-mt-20 space-y-3 rounded-xl border bg-card p-4">
+            <h2 className="flex items-baseline gap-2 font-semibold tracking-tight"><span className="text-sm text-muted-foreground num">{n + 1}.</span>{h.title}</h2>
             <ol className="list-decimal space-y-1.5 pl-5 text-sm leading-relaxed">{h.steps.map((s, i) => <li key={i}>{md(s)}</li>)}</ol>
             {h.tip && <p className="text-xs text-muted-foreground">{md(h.tip)}</p>}
             <div className="flex flex-wrap gap-2">{h.links.map((l) => <Button key={l.href} size="sm" variant="outline" nativeButton={false} render={<Link href={l.href} />}>{l.label}</Button>)}</div>
           </section>
         ))}
-        {!shown.length && <p className="text-sm text-muted-foreground">Nothing matches. Try another word, or press Ask a question.</p>}
+        {!shown.length && <p className="text-sm text-muted-foreground">Nothing matches. Try another word, or ask Max (the round bot, bottom right).</p>}
       </div>
     </>
   );

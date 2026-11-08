@@ -62,9 +62,9 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" render={<Link href="/desk" prefetch={false} />} tooltip="SponsorDesk">
-              <div className="grid size-8 shrink-0 place-items-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">S</div>
+              <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-primary text-sm font-bold text-sidebar-primary-foreground">S</div>
               <div className="min-w-0 leading-tight">
-                <div className="truncate font-medium">SponsorDesk</div>
+                <div className="truncate font-semibold tracking-tight">SponsorDesk</div>
                 {e && <div className="truncate text-xs text-sidebar-foreground/60">{e.name}</div>}
               </div>
             </SidebarMenuButton>
@@ -73,16 +73,16 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         {groups.map((g, gi) => (
-          <SidebarGroup key={g.label || gi}>
-            {g.label && <SidebarGroupLabel>{g.label}</SidebarGroupLabel>}
+          <SidebarGroup key={g.label || gi} className="py-1">
+            {g.label && <SidebarGroupLabel className="text-[0.6875rem] font-semibold tracking-wider text-sidebar-foreground/45 uppercase">{g.label}</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
                 {g.items.map((it) => (
                   <SidebarMenuItem key={it.url}>
-                    <SidebarMenuButton isActive={isOn(it.url)} tooltip={it.title} render={<Link href={it.url} prefetch={false} />}>
+                    <SidebarMenuButton isActive={isOn(it.url)} tooltip={it.title} className="text-sidebar-foreground/75 hover:text-sidebar-foreground data-[active]:font-medium data-[active]:text-sidebar-foreground" render={<Link href={it.url} prefetch={false} />}>
                       <it.icon />
                       <span>{it.title}</span>
-                      {it.live && <span className="ml-auto size-1.5 animate-pulse rounded-full bg-foreground group-data-[collapsible=icon]:hidden" aria-label="An agent is working" />}
+                      {it.live && <span className="ml-auto size-1.5 animate-pulse rounded-full bg-sidebar-foreground group-data-[collapsible=icon]:hidden" aria-label="An agent is working" />}
                     </SidebarMenuButton>
                     {!!it.badge && (
                       <SidebarMenuBadge className="num text-sidebar-foreground/60">{it.badge}</SidebarMenuBadge>
@@ -121,7 +121,7 @@ export function AppSidebar() {
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" tooltip="Sign out" onClick={() => api("/api/logout", {}).finally(() => { window.location.href = "/login"; })}>
-              <div className="grid size-8 shrink-0 place-items-center rounded-md border text-xs font-medium">{String(me?.name || "?").slice(0, 1).toUpperCase()}</div>
+              <div className="grid size-8 shrink-0 place-items-center rounded-full border border-sidebar-border bg-sidebar-accent text-xs font-medium">{String(me?.name || "?").slice(0, 1).toUpperCase()}</div>
               <div className="min-w-0 flex-1 leading-tight">
                 <div className="truncate text-sm">{me?.name || "Signed in"}</div>
                 <div className="truncate text-xs text-sidebar-foreground/60 capitalize">{me?.role || ""}</div>

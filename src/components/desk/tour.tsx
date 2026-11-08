@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { usePathname, useRouter } from "next/navigation";
 
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { TOUR } from "@/lib/guide";
 
 import { useDesk } from "./desk-provider";
+import { api } from "./format";
 
 // The guided tour: opens each page by itself, dims the screen around one thing and says what it is for. Next and
 // Back, or Play to let it run on its own. Starts once on a person's first visit; Help (or /desk?tour=1) restarts it.
@@ -26,16 +27,22 @@ export function Tour() {
   const [play, setPlay] = useState(false);
   const step = i == null ? null : TOUR[i];
 
-  // Start: on request (?tour=1) or the first time this person opens the desk on this device.
+  // Start: on request (?tour=1), or once ever for a new person. "Seen" is kept on the server for the person, so it
+  // never comes back on another device, browser or after clearing the browser; this device remembers it too.
+  const seenOnServer = !!data?.me?.tour_seen;
+  const started = useRef(false);
   useEffect(() => {
     if (!meId) return;
-    const key = `sd_tour_seen:${meId}`;
     const asked = new URLSearchParams(window.location.search).get("tour") === "1";
-    let seen = true;
-    try { seen = !!localStorage.getItem(key); localStorage.setItem(key, "1"); } catch { /* storage blocked: only on request */ }
-    if (asked || !seen) setI(0);
-    if (asked) window.history.replaceState({}, "", window.location.pathname);
-  }, [meId, path]);
+    if (asked) { window.history.replaceState({}, "", window.location.pathname); setI(0); return; }
+    if (started.current || seenOnServer) return;
+    const key = `sd_tour_seen:${meId}`;
+    let seenHere = false;
+    try { seenHere = !!localStorage.getItem(key); localStorage.setItem(key, "1"); } catch { /* storage blocked */ }
+    started.current = true;
+    api("/api/act", { op: "tour_seen" }).catch(() => {});
+    if (!seenHere) setI(0);
+  }, [meId, path, seenOnServer]);
 
   // Each step opens its page.
   useEffect(() => { if (step && path !== step.path) router.push(step.path); }, [step, path, router]);

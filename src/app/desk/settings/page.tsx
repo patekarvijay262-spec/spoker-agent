@@ -17,9 +17,9 @@ function Health() {
   const [run, setRun] = useState(false);
   const LABEL: Record<string, string> = { database: "Database", engine: "Agent engine", crustdata: "Crustdata", gmail: "Gmail" };
   return (
-    <section className="space-y-3 rounded-xl border bg-card p-5">
+    <section className="space-y-3 rounded-xl border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div><h2 className="font-medium">Check connections</h2><p className="text-sm text-muted-foreground">One free call to each service.</p></div>
+        <div><h2 className="font-semibold tracking-tight">Check connections</h2><p className="text-sm text-muted-foreground">One free call to each service.</p></div>
         <Button disabled={run} onClick={() => { setRun(true); api("/api/health").then(setH).catch((e) => setH({ error: { ok: false, detail: e.message } })).finally(() => setRun(false)); }}><Activity className="size-4" />{run ? "Checking..." : "Check now"}</Button>
       </div>
       {h && <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{Object.entries(h).map(([k, v]: Any) => (
@@ -43,9 +43,9 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Settings" description="Connections, rules and your team." />
       <Health />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section className="space-y-3 rounded-xl border bg-card p-5">
-          <h2 className="font-medium">Connections</h2>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="space-y-3 rounded-xl border bg-card p-4">
+          <h2 className="font-semibold tracking-tight">Connections</h2>
           <dl className="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-[130px_1fr]">
             <dt className="text-muted-foreground">Engine</dt><dd>{s.engine}</dd>
             <dt className="text-muted-foreground">Company data</dt><dd>{s.crustdata ? <span className="font-semibold text-success">Crustdata connected</span> : <span className="text-destructive">Add CRUSTDATA_API_KEY in Vercel to find companies and people.</span>}</dd>
@@ -55,8 +55,8 @@ export default function SettingsPage() {
             <dt className="text-muted-foreground">Instagram</dt><dd>{s.instagram?.connected ? <span className="font-medium text-success">@{s.instagram.handle} connected: own posts read for past sponsors</span> : s.instagram?.app ? <a className="underline-offset-2 hover:underline" href="/api/instagram/auth">Connect Instagram</a> : <span className="text-muted-foreground">Add INSTAGRAM_APP_ID and INSTAGRAM_APP_SECRET to read your own posts.</span>}</dd>
           </dl>
         </section>
-        <section className="space-y-3 rounded-xl border bg-card p-5">
-          <h2 className="font-medium">Sending rules</h2>
+        <section className="space-y-3 rounded-xl border bg-card p-4">
+          <h2 className="font-semibold tracking-tight">Sending rules</h2>
           <p className="text-sm text-muted-foreground">Approvers: {s.approvers || "none yet"}. Approval rights come from each person's role.</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {([["cap_new_per_day", "New cold emails a day"], ["cap_total_per_day", "Total emails a day"], ["spacing_sec", "Seconds between sends"]] as const).map(([k, l]) => (
@@ -68,8 +68,8 @@ export default function SettingsPage() {
         </section>
       </div>
       {can("admin") && (
-        <section className="space-y-3 rounded-xl border bg-card p-5">
-          <div><h2 className="font-medium">Team</h2><p className="text-sm text-muted-foreground" title="Admin: everything. Approver: approves and sends, locks the floor, decides exceptions. Operator: runs agents, edits drafts. Read-only: views.">Invite people to this desk. They sign in with Google using that email.</p></div>
+        <section className="space-y-3 rounded-xl border bg-card p-4">
+          <div><h2 className="font-semibold tracking-tight">Team</h2><p className="text-sm text-muted-foreground" title="Admin: everything. Approver: approves and sends, locks the floor, decides exceptions. Operator: runs agents, edits drafts. Read-only: views.">Invite people to this desk. They sign in with Google using that email.</p></div>
           <div className="overflow-x-auto"><table className="w-full min-w-[40rem] text-sm">
             <thead className="text-left text-xs text-muted-foreground"><tr><th className="py-2">Name</th><th>Email</th><th>Role</th><th /></tr></thead>
             <tbody>{(data.users || []).map((u: Any) => (
@@ -89,9 +89,9 @@ export default function SettingsPage() {
           </form>
         </section>
       )}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section className="space-y-3 rounded-xl border bg-card p-5">
-          <h2 className="font-medium">People and data</h2>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="space-y-3 rounded-xl border bg-card p-4">
+          <h2 className="font-semibold tracking-tight">People and data</h2>
           <p className="text-sm text-muted-foreground" title="Erasing keeps only a hash so the person is never contacted again (DPDP Act 2023).">Opt-outs and erasure are permanent.</p>
           <div className="flex flex-wrap gap-2"><Input className="max-w-xs" placeholder="email@company.com" value={email} onChange={(e) => setEmail(e.target.value)} aria-label="Email address" />
             <Button variant="outline" disabled={!email || !can("approver")} onClick={() => act("suppress", { email }, "Suppressing").then(() => flash("Will never be emailed"))}>Never email</Button>
@@ -99,7 +99,7 @@ export default function SettingsPage() {
         </section>
         {can("admin") && (
           <section className="space-y-3 rounded-xl border border-destructive/30 bg-card p-5">
-            <h2 className="flex items-center gap-2 font-medium"><ShieldAlert className="size-5 text-destructive" />Start over</h2>
+            <h2 className="flex items-center gap-2 font-semibold tracking-tight"><ShieldAlert className="size-5 text-destructive" />Start over</h2>
             <p className="text-sm text-muted-foreground" title="Clears every company, contact, email, meeting, deck, deal and the brief. Settings and Google stay.">Clears this desk's data. Type RESET to confirm.</p>
             <div className="flex gap-2"><Input className="max-w-40" value={confirmReset} onChange={(e) => setConfirmReset(e.target.value)} placeholder="RESET" aria-label="Type RESET to confirm" />
               <Button variant="destructive" disabled={confirmReset !== "RESET"} onClick={() => act("reset", { confirm: "RESET" }, "Clearing the desk").then((r: Any) => { if (r) { flash("Desk cleared"); setConfirmReset(""); } })}>Reset desk</Button></div>

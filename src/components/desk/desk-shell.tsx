@@ -31,7 +31,7 @@ function Main({ children }: { children: ReactNode }) {
   return (
     <>
       {data.me?.viewing && <ViewingBar name={data.me.viewing.name} />}
-      <main className="mx-auto w-full max-w-7xl space-y-8 p-4 pb-32 md:p-8 md:pb-12">{children}</main>
+      <main className="mx-auto w-full max-w-7xl space-y-5 p-4 pb-28 md:px-6 md:py-5 md:pb-20">{children}</main>
       {!data.me?.viewing && <Tour />}
     </>
   );

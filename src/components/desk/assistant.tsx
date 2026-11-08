@@ -34,6 +34,27 @@ const LANG_KEY = "sd_assistant_lang";
 const ENGINE_NOTE: Record<string, string> = { gemini: "Gemini", sarvam: "Sarvam AI" };
 const STARTERS = ["What's going on?", "What should I do next?", "Who should I pitch first?"];
 
+/** Max, the desk's helper: a small round bot face that blinks. */
+export function MaxFace({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 48 48" className={className} aria-hidden="true">
+      <line x1="24" y1="9" x2="24" y2="4.5" stroke="#111" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="24" cy="4" r="2.6" fill="#f5a524" />
+      <circle cx="24" cy="27" r="19" fill="#111" />
+      <circle cx="24" cy="27" r="19" fill="none" stroke="#fff" strokeOpacity="0.18" />
+      <g className="max-eye">
+        <ellipse cx="17.5" cy="24.5" rx="4" ry="4.6" fill="#fff" />
+        <ellipse cx="30.5" cy="24.5" rx="4" ry="4.6" fill="#fff" />
+        <circle cx="18.4" cy="25.4" r="1.9" fill="#111" />
+        <circle cx="31.4" cy="25.4" r="1.9" fill="#111" />
+      </g>
+      <circle cx="12.5" cy="31.5" r="2.2" fill="#f87171" opacity="0.55" />
+      <circle cx="35.5" cy="31.5" r="2.2" fill="#f87171" opacity="0.55" />
+      <path d="M19 33 Q24 37.5 29 33" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function Assistant() {
   const { chatOpen, setChatOpen, pendingQuestion, pendingVoice, clearPending, busy, progress, openCompany } = useDesk();
   const control = useVoiceControl();
@@ -111,28 +132,30 @@ export function Assistant() {
 
   return (
     <>
-      {/* Phones: a small dock (desktop has these in the header). */}
+      {/* Max floats bottom right on every screen; phones also get the voice button (desktop has it in the header). */}
       {!chatOpen && (
-        <div className="fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 flex flex-col gap-2 md:hidden">
+        <div className="fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 flex flex-col items-center gap-2">
           {control.enabled && (
             <button type="button" onClick={control.toggle} aria-label={control.phase === "listening" ? "Stop listening" : "Talk to the desk"}
-              className={cn("grid size-12 place-items-center rounded-full border bg-background shadow-md", control.phase === "listening" && "animate-ring bg-primary text-primary-foreground")}>
+              className={cn("grid size-11 place-items-center rounded-full border bg-background shadow-md md:hidden", control.phase === "listening" && "animate-ring bg-primary text-primary-foreground")}>
               {control.phase === "thinking" ? <Loader2 className="size-5 animate-spin" /> : <Mic className="size-5" />}
             </button>
           )}
-          <button type="button" onClick={() => setChatOpen(true)} aria-label="Ask the desk"
-            className="relative grid size-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-md">
-            <MessageCircle className="size-5" />
-            {(unread || busy || progress) && <span className={cn("absolute top-0.5 right-0.5 size-2.5 rounded-full border-2 border-primary", unread ? "bg-warning" : "animate-pulse bg-primary-foreground")} />}
+          <button type="button" onClick={() => setChatOpen(true)} aria-label="Ask Max" title="Ask Max" data-tour="ask"
+            className="group relative grid size-14 place-items-center rounded-full bg-background shadow-lg ring-1 ring-border transition hover:scale-105">
+            <MaxFace className="max-bob size-12" />
+            <span className="pointer-events-none absolute right-full mr-2 hidden rounded-full bg-foreground px-2.5 py-1 text-xs whitespace-nowrap text-background shadow group-hover:block">Ask Max</span>
+            {(unread || busy || progress) && <span className={cn("absolute top-0.5 right-0.5 size-3 rounded-full border-2 border-background", unread ? "bg-warning" : "animate-pulse bg-success")} />}
           </button>
         </div>
       )}
       {chatOpen && (
-        <section role="dialog" aria-label="Ask the desk"
+        <section role="dialog" aria-label="Max, the desk's helper"
           className="fixed inset-0 z-50 flex flex-col bg-background animate-rise md:inset-auto md:top-16 md:right-4 md:bottom-4 md:w-[26rem] md:rounded-xl md:border md:shadow-lg">
           <header className="flex items-center gap-1 border-b py-2 pr-2 pl-4">
+            <MaxFace className="mr-1 size-8 shrink-0" />
             <div className="min-w-0 flex-1">
-              <div className="font-medium">Ask the desk</div>
+              <div className="font-semibold tracking-tight">Max</div>
               <div className="truncate text-xs text-muted-foreground">
                 {busy || progress ? `${agent?.name}: ${(busy?.label || progress?.label || "").slice(0, 48)}` : "Questions, advice, any language"}
               </div>
@@ -162,8 +185,9 @@ export function Assistant() {
           <div ref={scroller} className="flex-1 space-y-6 overflow-y-auto px-4 py-6 scrollbar-thin">
             {!msgs.length && !thinking && (
               <div className="flex h-full flex-col items-center justify-center gap-1 text-center">
-                <div className="font-medium">How can I help?</div>
-                <div className="max-w-64 text-sm text-muted-foreground">Ask about your sponsors, or anything else. Type or speak in 12 languages.</div>
+                <MaxFace className="max-bob mb-2 size-16" />
+                <div className="font-semibold">Hi, I'm Max</div>
+                <div className="max-w-64 text-sm text-muted-foreground">Ask how to do anything here, about your sponsors, or anything else. Type or speak in 12 languages.</div>
               </div>
             )}
             {msgs.map((m, i) => m.role === "user" ? (
@@ -197,7 +221,7 @@ export function Assistant() {
             <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="flex items-end gap-1 rounded-lg border bg-background p-1 pl-3 focus-within:ring-2 focus-within:ring-ring/30">
               <textarea ref={inputRef} id="assistant-input" rows={1} value={input} onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
-                placeholder={replyLang && replyLang !== "en-IN" ? `Ask anything · answers in ${langLabel.label}` : "Ask anything"} aria-label="Your question"
+                placeholder={replyLang && replyLang !== "en-IN" ? `Ask Max · answers in ${langLabel.label}` : "Ask Max anything"} aria-label="Your question"
                 className="max-h-28 min-h-8 flex-1 resize-none bg-transparent py-1.5 text-sm outline-none placeholder:text-muted-foreground" />
               {voice.enabled && (
                 <button type="button" disabled={thinking || voice.working} onClick={voice.toggle} aria-label={voice.recording ? "Stop and send" : "Ask by voice"} title={voice.recording ? "Stop and send" : "Ask by voice"}

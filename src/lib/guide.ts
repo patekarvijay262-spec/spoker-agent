@@ -93,7 +93,7 @@ export const TOUR: TourStep[] = [
   { path: "/desk/outbox", target: "send", title: "Send", text: "Every email waits here for your yes. Read, edit or approve; approved emails go out from your Gmail." },
   { path: "/desk/inbox", target: "replies", title: "Replies", text: "What sponsors wrote back. Any reply stops cold emails to that company." },
   { path: "/desk/connectors", target: "connectors", title: "Connectors", text: "Plug in Gmail and Calendar, Apollo, Claude, Gemini, Canva or any tool your team uses. Paste a key once; the desk checks it and keeps it safe." },
-  { path: "/desk", target: "ask", title: "Ask anything", text: "Stuck? Press Ask and type a question like “how do I attach my deck?”. The answer comes with a button to the right page." },
+  { path: "/desk", target: "ask", title: "Meet Max", text: "Stuck? Click Max, the little round bot in the corner, and ask something like “how do I attach my deck?”. The answer comes with a button to the right page." },
   { path: "/desk", target: "help", title: "Help is always here", text: "The full manual and this tour live under Help. That's it: you are ready." },
 ];
 

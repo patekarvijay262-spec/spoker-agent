@@ -85,7 +85,7 @@ function CompanyBody({ c }: { c: Any }) {
           </TabsList>
         </div>
 
-        <TabsContent value="overview" className="space-y-6 p-5 sm:p-8">
+        <TabsContent value="overview" className="space-y-4 p-4 sm:p-5">
           <section>
             <p className="text-sm leading-relaxed">{ab.description || c.why_now || "No description on Crustdata yet."}</p>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
@@ -183,8 +183,8 @@ function CompanyBody({ c }: { c: Any }) {
           )}
         </TabsContent>
 
-        <TabsContent value="next" className="p-5 sm:p-8"><NextSteps c={c} primary={primary} /></TabsContent>
-        <TabsContent value="people" className="space-y-4 p-5 sm:p-8">
+        <TabsContent value="next" className="p-4 sm:p-5"><NextSteps c={c} primary={primary} /></TabsContent>
+        <TabsContent value="people" className="space-y-3 p-4 sm:p-5">
           {contacts.length ? [...contacts].sort((a: Any, b: Any) => (b.is_primary - a.is_primary) || ((b.relevance ?? -1) - (a.relevance ?? -1))).map((ct: Any) => <ContactCard key={ct.id} ct={ct} co={c} />)
             : <p className="text-sm text-muted-foreground">No decision maker yet. Score the company to find the right people.</p>}
           <div className="flex flex-wrap gap-2">
@@ -193,7 +193,7 @@ function CompanyBody({ c }: { c: Any }) {
           </div>
           {contacts.length > 3 && <p className="text-xs text-muted-foreground">Emails go out 3 people at a time, best placed first, so each one stays personal. Every draft waits for your approval.</p>}
         </TabsContent>
-        <TabsContent value="timeline" className="p-5 sm:p-8"><Timeline c={c} /></TabsContent>
+        <TabsContent value="timeline" className="p-4 sm:p-5"><Timeline c={c} /></TabsContent>
       </Tabs>
     </div>
   );

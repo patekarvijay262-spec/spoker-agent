@@ -58,7 +58,7 @@ export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => 
       ["Approve emails waiting in Send", go("/desk/outbox"), "approve send outbox"],
       ["Change event dates or address", go("/desk/brief"), "dates city address signature edit details"],
       ["Start the tour", go("/desk?tour=1"), "tour help learn guide walkthrough"],
-      ["Ask the desk a question", () => { onClose(); setChatOpen(true); }, "ask chat question bot"],
+      ["Ask Max a question", () => { onClose(); setChatOpen(true); }, "ask max chat question bot help"],
       ["Ask: what should I do next?", () => { onClose(); ask("What should I do next?"); }, "next todo what now"],
       ...(can("operator") && !cos.length ? [["Find 10 companies now", () => { onClose(); autopilot(10); }, "find 10 sponsors"] as [string, () => void, string]] : []),
     ];
