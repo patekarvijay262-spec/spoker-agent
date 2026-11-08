@@ -23,8 +23,8 @@ function Status({ on, children }: { on: boolean; children: React.ReactNode }) {
 
 function Card({ name, what, status, children }: { name: string; what: string; status: React.ReactNode; children?: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-2 rounded-xl border p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium">{name}</span>{status}</div>
+    <div className="flex flex-col gap-1.5 rounded-xl border bg-card p-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-semibold tracking-tight">{name}</span>{status}</div>
       <p className="text-xs leading-relaxed text-muted-foreground">{what}</p>
       {children && <div className="mt-auto space-y-2 pt-1">{children}</div>}
     </div>
@@ -63,9 +63,9 @@ function OtherTools() {
   const [f, setF] = useState({ name: "", url: "", key: "", deck: false });
   const isDesign = /canva|slides|drive|docs\.google|figma|pitch\.com|gamma/i.test(f.url + f.name);
   return (
-    <div className="space-y-3 rounded-xl border p-4">
+    <div className="space-y-3 rounded-xl border bg-card p-3.5">
       <div>
-        <div className="font-medium">Any other tool</div>
+        <div className="font-semibold tracking-tight">Any other tool</div>
         <p className="text-xs text-muted-foreground">Canva, Google Drive, Notion, a CRM: save it here so the team finds it in one place. A Canva, Slides or Drive link to your deck can go with every first email.</p>
       </div>
       {tools.length > 0 && (

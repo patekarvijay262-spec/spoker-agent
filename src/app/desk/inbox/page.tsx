@@ -19,7 +19,7 @@ function Decision({ x }: { x: Any }) {
   const [e, setE] = useState({ subject: x.draft_subject || "", body: x.draft_body || "" });
   const c = data.companies.find((y: Any) => y.id === x.company_id);
   return (
-    <article className="space-y-3 rounded-xl border bg-card p-4">
+    <article className="space-y-2.5 rounded-xl border bg-background p-3.5">
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
           <span className="rounded-full bg-muted px-2 py-0.5 text-[0.7rem] font-semibold text-foreground">{KIND[x.kind] || x.kind}</span>
@@ -55,13 +55,13 @@ export default function InboxPage() {
         <Button variant="outline" disabled={!!busy || !data.settings.gmail} onClick={() => act("replies", {}, "Checking Gmail for replies").then((r: Any) => r && flash(`Checked ${r.checked} threads`, `${r.found} new replies`, "info"))}><RefreshCw className="size-4" />Check Gmail for replies</Button>
       </PageHeader>
       {!can("approver") && <p className="text-sm text-muted-foreground">Decisions here need an approver.</p>}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-        <div className="space-y-4">
-          <h2 className="flex items-center gap-2 font-semibold tracking-tight"><Gavel className="size-5 text-muted-foreground" />Decisions <span className="text-muted-foreground num">{exs.length}</span></h2>
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        <div className="order-2 space-y-3 rounded-2xl border bg-card p-4">
+          <h2 className="flex items-center gap-2 font-semibold tracking-tight"><Gavel className="size-4 text-muted-foreground" />Decisions <span className="text-muted-foreground num">{exs.length}</span></h2>
           {exs.map((x: Any) => <Decision key={x.id} x={x} />)}
-          {!exs.length && <EmptyState icon={CheckCircle2} title="Nothing needs you">Offers below your lowest price and anything unusual would show here.</EmptyState>}
+          {!exs.length && <p className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground"><CheckCircle2 className="size-4 text-success" />Nothing needs you. Offers below your lowest price would show here.</p>}
           {notes.length > 0 && (
-            <details className="rounded-lg border p-3 text-sm">
+            <details className="rounded-lg border px-3 py-2 text-sm">
               <summary className="cursor-pointer text-muted-foreground">No verified person found yet at {notes.length} {notes.length === 1 ? "company" : "companies"}</summary>
               <p className="mt-2 text-xs text-muted-foreground">Nothing to do unless you know someone there. Open a company to add a person, or use Find people again later.</p>
               <ul className="mt-2 flex flex-wrap gap-1.5">
@@ -72,18 +72,18 @@ export default function InboxPage() {
             </details>
           )}
         </div>
-        <section className="space-y-3">
-          <h2 className="flex items-center gap-2 font-semibold tracking-tight"><MailCheck className="size-5 text-muted-foreground" />Replies <span className="text-muted-foreground num">{data.replies.length}</span></h2>
-          <p className="text-sm text-muted-foreground" title="Read by fixed rules, not a model, so a sponsor email can never instruct the desk.">Any reply stops cold mail to that company.</p>
+        <section className="order-1 space-y-3 rounded-2xl border bg-card p-4">
+          <h2 className="flex items-center gap-2 font-semibold tracking-tight"><MailCheck className="size-4 text-muted-foreground" />Replies <span className="text-muted-foreground num">{data.replies.length}</span></h2>
+          <p className="-mt-2 text-xs text-muted-foreground" title="Read by fixed rules, not a model, so a sponsor email can never instruct the desk.">Any reply stops cold mail to that company.</p>
           <div className="space-y-2">
             {data.replies.map((r: Any) => (
-              <button key={r.id} type="button" onClick={() => r.company_id && openCompany(r.company_id)} className="w-full rounded-lg border bg-card p-3 text-left text-sm transition hover:border-primary/50">
+              <button key={r.id} type="button" onClick={() => r.company_id && openCompany(r.company_id)} className="w-full rounded-lg border bg-background px-3 py-2.5 text-left text-sm transition hover:border-foreground/30">
                 <div className="flex flex-wrap items-center gap-2"><b>{coName(r.company_id)}</b><span className={`rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ${CLASS_TONE[r.classification] || "bg-muted"}`}>{String(r.classification).replace("_", " ")}</span>{String(r.gmail_id).startsWith("sim-") && <span className="rounded-full bg-muted px-2 py-0.5 text-[0.65rem]">simulated</span>}<span className="ml-auto text-xs text-muted-foreground">{when(r.received_at)}</span></div>
                 <p className="mt-1 text-muted-foreground">{r.summary}</p>
                 {r.offer_inr ? <div className="mt-1 font-semibold text-foreground">Offered {inr(r.offer_inr)}</div> : null}
               </button>
             ))}
-            {!data.replies.length && <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">No replies yet. You can try one from any company's Next steps tab.</p>}
+            {!data.replies.length && <p className="rounded-lg bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">No replies yet. You can try one from any company's Next steps tab.</p>}
           </div>
         </section>
       </div>

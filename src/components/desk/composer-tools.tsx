@@ -141,7 +141,7 @@ export function PlusMenu({ onText, className }: { onText: (t: string) => void; c
             <Plug className="size-4 text-muted-foreground" />Connectors<span className="ml-auto text-xs text-muted-foreground num">{connectors.filter((c) => c.on).length}</span><ChevronRight className="size-3.5 text-muted-foreground" />
           </button>
           {sub && (
-            <div className="absolute bottom-0 left-full ml-1 w-60 rounded-xl border bg-popover p-1 shadow-lg max-sm:static max-sm:mt-1 max-sm:ml-0 max-sm:w-auto max-sm:border-0 max-sm:p-0 max-sm:shadow-none">
+            <div className="absolute top-0 left-full ml-1 w-60 rounded-xl border bg-popover p-1 shadow-lg max-sm:static max-sm:mt-1 max-sm:ml-0 max-sm:w-auto max-sm:border-0 max-sm:p-0 max-sm:shadow-none">
               <div className="max-h-64 overflow-y-auto scrollbar-thin">
                 {connectors.map((c) => (
                   <Link key={c.id} href="/desk/connectors" prefetch={false} className={item} onClick={() => setOpen(false)}>

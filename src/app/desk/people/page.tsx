@@ -35,18 +35,18 @@ export default function PeoplePage() {
         <Button variant="outline" nativeButton={false} render={<a href="/api/export" />}><Download className="size-4" />Export CSV</Button>
       </PageHeader>
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex rounded-lg bg-muted p-1">
-          <button type="button" onClick={() => setTab("dm")} className={cn("rounded-md px-3 py-1 text-sm", tab === "dm" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}>Decision makers {review ? `· ${review} to check` : ""}</button>
-          <button type="button" onClick={() => setTab("all")} className={cn("rounded-md px-3 py-1 text-sm", tab === "all" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}>All contacts · {data.contacts.length}</button>
+        <div className="flex rounded-lg bg-muted p-0.5">
+          <button type="button" onClick={() => setTab("dm")} className={cn("rounded-md px-3 py-1 text-[0.8125rem]", tab === "dm" ? "bg-background font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground")}>Decision makers {review ? `· ${review} to check` : ""}</button>
+          <button type="button" onClick={() => setTab("all")} className={cn("rounded-md px-3 py-1 text-[0.8125rem]", tab === "all" ? "bg-background font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground")}>All contacts · {data.contacts.length}</button>
         </div>
         <div className="relative min-w-52 flex-1"><Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" /><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people, titles, companies" className="pl-8" aria-label="Search people" /></div>
       </div>
 
       {!data.contacts.length ? <EmptyState icon={Users} title="No people yet">Score a company to find its decision makers.</EmptyState> : tab === "dm" ? (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-          <div className="space-y-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+          <div className="divide-y self-start overflow-hidden rounded-xl border bg-card">
             {rows.map(({ co, p }: Any) => (
-              <button key={co.id} type="button" onClick={() => setSel(sel === co.id ? "" : co.id)} className={cn("flex w-full items-center gap-3 rounded-lg border bg-card p-3 text-left transition hover:border-primary/50", sel === co.id && "border-primary ring-2 ring-primary/15", needsCheck(p) && "border-warning/40")}>
+              <button key={co.id} type="button" onClick={() => setSel(sel === co.id ? "" : co.id)} className={cn("flex w-full items-center gap-3 border-l-2 border-l-transparent px-3 py-2.5 text-left transition hover:bg-muted/40", sel === co.id && "border-l-foreground bg-muted/60", needsCheck(p) && "border-l-warning")}>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2"><span className="truncate font-semibold">{p.full_name}</span><PriorityBadge p={co.priority} /></div>
@@ -59,7 +59,7 @@ export default function PeoplePage() {
               </button>
             ))}
           </div>
-          <div className="space-y-3 xl:sticky xl:top-20 xl:self-start">
+          <div className="space-y-2.5 lg:sticky lg:top-16 lg:self-start">
             {cur ? (
               <>
                 <div className="flex items-center justify-between"><h2 className="font-semibold tracking-tight">{brandName(cur.co)}</h2><Button variant="ghost" size="sm" onClick={() => openCompany(cur.co.id)}>Open company →</Button></div>

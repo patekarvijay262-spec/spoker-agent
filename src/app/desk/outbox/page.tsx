@@ -40,23 +40,22 @@ export default function OutboxPage() {
         {sets.draft.length > 1 && <Button variant="outline" disabled={!!busy || !approver} onClick={() => act("approve_many", { keys: sets.draft.map((m) => m.key) }, "Approving").then((r: Any) => r && flash(`Approved ${r.results.filter((x: Any) => x.ok).length} emails`, undefined, "success"))}><CheckCheck className="size-4" />Approve all {sets.draft.length}</Button>}
         <Button disabled={!!busy || !approver} onClick={() => act("send", {}, "Sending approved emails").then((r: Any) => r && flash(`Sent ${r.sent}`, (r.notes || []).join(" "), "info"))}><Send className="size-4" />Send approved now</Button>
       </PageHeader>
-      {!data.settings.gmail && <p className="flex items-center gap-2 text-sm text-muted-foreground"><Info className="size-4 shrink-0 text-warning" />Draft mode: connect Google in Settings to send from your mailbox.</p>}
+      {!data.settings.gmail && <p className="flex items-center gap-2 text-sm text-muted-foreground"><Info className="size-4 shrink-0 text-warning" />Draft mode: connect Gmail in Connectors to send from your mailbox.</p>}
       {!approver && <p className="text-sm text-muted-foreground">Your role ({data.me?.role}) can edit drafts. An approver sends them.</p>}
 
-      <div className="grid min-h-[60vh] overflow-hidden rounded-xl border bg-card lg:grid-cols-[22rem_1fr]">
+      <div className="grid min-h-[60vh] overflow-hidden rounded-xl border bg-card lg:grid-cols-[19rem_1fr]">
         <div className={cn("flex min-w-0 flex-col lg:border-r", reading && "hidden lg:flex")}>
-          <div className="flex gap-1 overflow-x-auto border-b p-2 scrollbar-thin">
+          <div className="flex gap-0.5 overflow-x-auto border-b bg-muted/40 p-1.5 scrollbar-thin">
             {([["draft", "To approve"], ["queued", "Queued"], ["check", "Check"], ["sent", "Sent"]] as const).map(([k, l]) => (
-              <button key={k} type="button" onClick={() => setTab(k)} className={cn("shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 text-sm transition", tab === k ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground")}>{l} <span className="num text-muted-foreground">{sets[k].length}</span></button>
+              <button key={k} type="button" onClick={() => setTab(k)} className={cn("shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 text-[0.8125rem] transition", tab === k ? "bg-background font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground")}>{l} <span className="num text-muted-foreground">{sets[k].length}</span></button>
             ))}
           </div>
           <div className="max-h-[70vh] flex-1 overflow-y-auto">
             {list.map((m) => (
-              <button key={m.key} type="button" onClick={() => { setSel(m.key); setEdit(null); setReading(true); }} className={cn("flex w-full gap-3 border-b p-3 text-left transition", sel === m.key ? "lg:bg-muted" : "hover:bg-muted/50")}>
+              <button key={m.key} type="button" onClick={() => { setSel(m.key); setEdit(null); setReading(true); }} className={cn("flex w-full gap-3 border-b border-l-2 border-l-transparent px-3 py-2.5 text-left transition", sel === m.key ? "lg:border-l-foreground lg:bg-muted/60" : "hover:bg-muted/40")}>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2"><span className="truncate text-sm font-medium">{brandName(co(m.company_id))}</span><span className="ml-auto shrink-0 text-[0.65rem] text-muted-foreground">{ago(m.sent_at || m.created_at)}</span></div>
-                  <div className="truncate text-sm text-muted-foreground">{m.subject}</div>
-                  <div className="truncate text-xs text-muted-foreground">{m.to_email}</div>
+                  <div className="flex items-center gap-2"><span className="truncate text-sm font-semibold">{brandName(co(m.company_id))}</span><span className="ml-auto shrink-0 text-[0.6875rem] text-muted-foreground">{ago(m.sent_at || m.created_at)}</span></div>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="min-w-0 truncate">{m.to_email}</span><span className="shrink-0 rounded bg-muted px-1.5 py-px text-[0.625rem]">{kindOf(m)}</span></div>
                 </div>
               </button>
             ))}
@@ -72,8 +71,8 @@ export default function OutboxPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <button type="button" className="text-sm text-muted-foreground hover:text-foreground hover:underline" onClick={() => openCompany(cur.company_id)}>{co(cur.company_id).name}</button>
-                  <h2 className="text-lg font-semibold">{edit ? "Editing draft" : cur.subject}</h2>
-                  <div className="text-sm text-muted-foreground">To {cur.to_email} · {kindOf(cur)} · {cur.scheduled_for ? `due ${when(cur.scheduled_for)}` : when(cur.created_at)}</div>
+                  <h2 className="text-lg leading-snug font-bold tracking-tight">{edit ? "Editing draft" : cur.subject}</h2>
+                  <div className="text-xs text-muted-foreground">To {cur.to_email} · {kindOf(cur)} · {cur.scheduled_for ? `due ${when(cur.scheduled_for)}` : when(cur.created_at)}</div>
                 </div>
                 {tab === "draft" && !edit && (
                   <div className="flex gap-2">
@@ -99,8 +98,8 @@ export default function OutboxPage() {
                   </div>
                 </div>
               ) : (
-                <article className="border-t pt-5">
-                  <pre className="max-w-2xl font-sans text-sm leading-relaxed whitespace-pre-wrap">{cur.body}</pre>
+                <article className="max-w-2xl rounded-xl bg-muted/40 p-4">
+                  <pre className="font-sans text-sm leading-relaxed whitespace-pre-wrap">{cur.body}</pre>
                 </article>
               )}
             </div>

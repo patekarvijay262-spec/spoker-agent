@@ -30,18 +30,18 @@ function CompanyCard({ c, primary }: { c: Any; primary: Any }) {
   const brand = brandName(c);
   return (
     <article className="flex flex-col rounded-xl border bg-card transition hover:border-foreground/20">
-      <button type="button" onClick={() => openCompany(c.id)} className="flex flex-1 flex-col gap-2.5 p-4 text-left">
+      <button type="button" onClick={() => openCompany(c.id)} className="flex flex-1 flex-col gap-2 p-3.5 text-left">
         <div className="flex w-full items-start gap-3">
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5"><h3 className="truncate font-medium">{brand}</h3><PriorityBadge p={c.priority} />{(r.requested || r.past_sponsor) && <Star className="size-3.5 text-muted-foreground" aria-label={r.past_sponsor ? "Past sponsor" : "You asked for this brand"} />}</div>
-            <div className="truncate text-sm text-muted-foreground">{[ab.industry || r.industry, ab.headcount ? `${Number(ab.headcount).toLocaleString("en-IN")} people` : ""].filter(Boolean).join(" · ") || c.domain}</div>
+            <div className="flex items-center gap-1.5"><h3 className="truncate font-semibold tracking-tight">{brand}</h3><PriorityBadge p={c.priority} />{(r.requested || r.past_sponsor) && <Star className="size-3.5 text-muted-foreground" aria-label={r.past_sponsor ? "Past sponsor" : "You asked for this brand"} />}</div>
+            <div className="truncate text-xs text-muted-foreground">{[ab.industry || r.industry, ab.headcount ? `${Number(ab.headcount).toLocaleString("en-IN")} people` : ""].filter(Boolean).join(" · ") || c.domain}</div>
           </div>
           <FitRing value={c.intersection} />
         </div>
-        <p className="line-clamp-2 text-sm text-muted-foreground">{ab.description || c.why_now || "No description yet."}</p>
+        <p className="line-clamp-2 text-[0.8125rem] leading-snug text-muted-foreground">{ab.description || c.why_now || "No description yet."}</p>
       </button>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t px-5 py-3 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t px-3.5 py-2 text-xs text-muted-foreground">
         {c.price_range ? <span className="text-foreground">{money(c.price_range)}</span> : <StageBadge stage={c.stage} />}
         {risky && <span className="inline-flex items-center gap-1 text-warning"><AlertTriangle className="size-3.5" />News to check</span>}
         <span className="ml-auto" />
@@ -109,9 +109,9 @@ export default function CompaniesPage() {
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-muted p-1 scrollbar-thin">
+        <div className="flex max-w-full gap-0.5 overflow-x-auto rounded-lg bg-muted p-0.5 scrollbar-thin">
           {[["all", `All ${cos.length}`], ["P1", `P1 ${counts.P1}`], ["P2", `P2 ${counts.P2}`], ["new", `New ${counts.new}`], ["drop", `Dropped ${counts.drop}`]].map(([k, l]) => (
-            <button key={k} type="button" onClick={() => setPri(k)} className={cn("shrink-0 rounded-md px-3 py-1 text-sm transition num", pri === k ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}>{l}</button>
+            <button key={k} type="button" onClick={() => setPri(k)} className={cn("shrink-0 rounded-md px-2.5 py-1 text-[0.8125rem] transition num", pri === k ? "bg-background font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground")}>{l}</button>
           ))}
         </div>
         <div className="relative min-w-48 flex-1"><Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" /><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search, or try “fintech”" className="pl-8" aria-label="Search companies" /></div>
@@ -146,9 +146,9 @@ export default function CompaniesPage() {
       ) : (
         <div className="space-y-5">
           {groups.map((g) => (
-            <section key={g.key} className="space-y-3">
-              <div className="flex items-baseline gap-2"><h2 className="font-semibold tracking-tight">{g.title}</h2><span className="text-sm text-muted-foreground num">{g.items.length}</span></div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">{g.items.map((c) => <CompanyCard key={c.id} c={c} primary={primaryOf(c.id)} />)}</div>
+            <section key={g.key} className="space-y-2.5">
+              <div className="flex items-baseline gap-2 border-b pb-1.5"><h2 className="font-bold tracking-tight">{g.title}</h2><span className="rounded-full bg-foreground px-1.5 text-[0.6875rem] font-semibold text-background num">{g.items.length}</span><span className="text-xs text-muted-foreground">{g.sub}</span></div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{g.items.map((c) => <CompanyCard key={c.id} c={c} primary={primaryOf(c.id)} />)}</div>
             </section>
           ))}
           {!groups.length && <EmptyState icon={Search} title="Nothing matches">Try another filter or search.</EmptyState>}

@@ -107,7 +107,7 @@ function Tiers() {
               <>
                 <div className="text-sm text-muted-foreground">{t.name}</div>
                 <div className="text-xl font-semibold tracking-tight num">{lakh(t.price_inr)}</div>
-                <div className="line-clamp-2 text-xs text-muted-foreground" title={t.deliverables}>{t.deliverables}</div>
+                <div className="line-clamp-1 text-xs text-muted-foreground" title={t.deliverables}>{t.deliverables}</div>
               </>
             )}
           </div>
@@ -116,13 +116,13 @@ function Tiers() {
       {can("operator") && (
         <Button variant="ghost" size="sm" onClick={() => (edit ? save() : setEdit(true))}>{edit ? <><Check />Save tiers</> : <><Pencil />Edit tiers</>}</Button>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/50 px-3 py-2">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 font-medium"><Lock className="size-4" />Lowest you would accept</div>
-          <p className="text-sm text-muted-foreground">Agents never agree below this without you. Sponsors never see it.</p>
+          <div className="flex items-center gap-1.5 text-sm font-semibold"><Lock className="size-3.5" />Lowest you would accept</div>
+          <p className="text-xs text-muted-foreground">Agents never agree below this without you. Sponsors never see it.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Input type="number" value={floor} onChange={(x) => setFloor(Number(x.target.value))} className="w-36" aria-label="Lowest price in rupees" />
+          <Input type="number" value={floor} onChange={(x) => setFloor(Number(x.target.value))} className="h-8 w-32" aria-label="Lowest price in rupees" />
           {(floor !== Number(e.floor_inr) || !e.floor_locked) && <Button variant="outline" disabled={!!busy || !floor || !can("approver")} onClick={() => act("lock_floor", { floor }, "Saving the lowest price")}>Save {lakh(floor)}</Button>}
         </div>
       </div>
@@ -228,9 +228,9 @@ function Prefs() {
         {SPONSOR_CATEGORIES.map((c) => {
           const on = cats.includes(c.id);
           return (
-            <span key={c.id} className={cn("inline-flex items-center overflow-hidden rounded-md border text-sm transition", on ? "border-primary" : "")}>
-              <button type="button" aria-pressed={on} title={c.hint} onClick={() => setCats(on ? cats.filter((x) => x !== c.id) : [...cats, c.id])} className={cn("px-2.5 py-1", on ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{c.label}</button>
-              {on && <NumberBox value={n(c.id)} max={50} label={`How many ${c.label}`} onChange={(v) => setCounts({ ...counts, [c.id]: v })} className="w-12 border-0 border-l" />}
+            <span key={c.id} className={cn("inline-flex items-center overflow-hidden rounded-full border text-xs transition", on ? "border-primary" : "")}>
+              <button type="button" aria-pressed={on} title={c.hint} onClick={() => setCats(on ? cats.filter((x) => x !== c.id) : [...cats, c.id])} className={cn("px-2.5 py-1", on ? "bg-primary font-medium text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{c.label}</button>
+              {on && <NumberBox value={n(c.id)} max={50} label={`How many ${c.label}`} onChange={(v) => setCounts({ ...counts, [c.id]: v })} className="w-10 border-0 border-l text-xs" />}
             </span>
           );
         })}
@@ -248,13 +248,14 @@ function Prefs() {
 
 function Sources() {
   const { data } = useDesk();
-  const list: Any[] = data.event.sources || [];
+  const seen = new Set<string>();
+  const list: Any[] = (data.event.sources || []).filter((s: Any) => { const k = (s.title || host(s.url)).toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
   if (!list.length) return null;
   return (
-    <Section title="Sources" hint="Pages the desk read.">
-      <ul className="space-y-2 text-sm">
+    <Section title="Sources" hint={`${list.length} pages the desk read`}>
+      <ul className="flex flex-wrap gap-1.5 text-xs">
         {list.slice(0, 8).map((s: Any, i: number) => (
-          <li key={i} className="min-w-0"><a href={s.url} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1.5 text-muted-foreground hover:text-foreground"><ExternalLink className="size-3.5 shrink-0" /><span className="truncate">{s.title || host(s.url)}</span></a></li>
+          <li key={i} className="min-w-0 max-w-full"><a href={s.url} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-1 text-muted-foreground hover:bg-muted hover:text-foreground"><ExternalLink className="size-3 shrink-0" /><span className="truncate">{s.title || host(s.url)}</span></a></li>
         ))}
       </ul>
     </Section>

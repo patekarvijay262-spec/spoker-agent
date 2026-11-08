@@ -17,14 +17,14 @@ import { actorName, type Any, ago, brandName, clock, humanLog, isDecision, isHum
 
 function StepCard({ n, title, icon: Icon, href, status, children, tour }: { n: number; title: string; icon: Any; href: string; status: React.ReactNode; children?: React.ReactNode; tour?: string }) {
   return (
-    <div className="flex flex-col gap-3 rounded-xl border bg-card p-4" data-tour={tour}>
-      <Link href={href} className="group flex items-center gap-3">
-        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-sm text-muted-foreground num">{n}</span>
-        <span className="flex-1 font-medium group-hover:underline">{title}</span>
+    <div className="flex flex-col gap-2 rounded-xl border bg-card p-3.5 transition hover:border-foreground/20" data-tour={tour}>
+      <Link href={href} className="group flex items-center gap-2">
+        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-foreground text-[0.6875rem] font-semibold text-background num">{n}</span>
+        <span className="flex-1 font-semibold tracking-tight group-hover:underline">{title}</span>
         <Icon className="size-4 text-muted-foreground" />
       </Link>
-      <div className="text-sm text-muted-foreground">{status}</div>
-      {children && <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">{children}</div>}
+      <div className="line-clamp-2 text-[0.8125rem] leading-snug text-muted-foreground">{status}</div>
+      {children && <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">{children}</div>}
     </div>
   );
 }
@@ -60,24 +60,24 @@ function Today() {
   const on = data.settings?.daily_reminder !== false;
   const gmail = !!data.settings?.gmail;
   return (
-    <section className="rounded-xl bg-muted/50 p-4" data-tour="today">
+    <section className="rounded-2xl bg-foreground p-4 text-background md:p-5" data-tour="today">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-semibold tracking-tight">Today</h2>
+        <h2 className="text-lg font-bold tracking-tight">Today</h2>
         {can("admin") && gmail && (
-          <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+          <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-background/60">
             <input type="checkbox" checked={on} onChange={() => act("settings", { daily_reminder: !on }, "Saving")} />
             Email me this list at 9 am
           </label>
         )}
       </div>
       {items.length ? (
-        <ul className="mt-3 space-y-2">
+        <ul className="mt-3 space-y-1.5">
           {items.map((i) => (
-            <li key={i.text}><Link href={i.href} className="group flex items-center gap-2 text-sm"><span className="size-1.5 shrink-0 rounded-full bg-foreground/60" /><span className="group-hover:underline">{i.text}</span></Link></li>
+            <li key={i.text}><Link href={i.href} className="group flex items-center gap-2.5 rounded-lg bg-background/10 px-3 py-2 text-sm transition hover:bg-background/15"><span className="size-1.5 shrink-0 rounded-full bg-[#f5a524]" /><span className="flex-1">{i.text}</span><ArrowRight className="size-3.5 opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-100" /></Link></li>
           ))}
         </ul>
-      ) : <p className="mt-2 text-sm text-muted-foreground">Nothing needs you today. Follow-ups and reminders run on their own.</p>}
-      {!gmail && <p className="mt-3 text-xs text-muted-foreground">Connect Gmail in Settings to get this list by email every morning.</p>}
+      ) : <p className="mt-2 text-sm text-background/70">Nothing needs you today. Follow-ups and reminders run on their own.</p>}
+      {!gmail && <p className="mt-3 text-xs text-background/50">Connect Gmail in Connectors to get this list by email every morning.</p>}
     </section>
   );
 }
@@ -104,14 +104,36 @@ export default function Home() {
 
   return (
     <>
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{e.name}</h1>
-        <p className="text-sm text-muted-foreground">{[e.organizer, e.dates, e.city].filter(Boolean).join(" · ")}</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="space-y-0.5">
+          <h1 className="text-[1.625rem] leading-tight font-bold tracking-tight">{e.name}</h1>
+          <p className="text-[0.8125rem] text-muted-foreground">{[e.organizer, e.dates, e.city].filter(Boolean).join(" · ")}</p>
+        </div>
+        <dl className="flex gap-1.5 text-center">
+          {[["Companies", cos.length], ["Waiting", waiting], ["Sent", sent], ["Replies", replies]].map(([k, v]) => (
+            <div key={k as string} className="min-w-16 rounded-lg border bg-card px-2.5 py-1.5"><dd className="text-lg leading-none font-semibold num">{v as number}</dd><dt className="mt-1 text-[0.6875rem] text-muted-foreground">{k as string}</dt></div>
+          ))}
+        </dl>
       </div>
 
-      <Today />
+      <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        <Today />
+        {log.length > 0 && (
+          <section className="rounded-2xl border bg-card p-4">
+            <h2 className="mb-2.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">Recently</h2>
+            <ol className="space-y-2.5" aria-live="polite">
+              {log.map((l: Any) => (
+                <li key={l.id} className="text-[0.8125rem] leading-snug">
+                  <span className="line-clamp-1">{l.company_id && <span className="mr-1 font-medium">{coName(l.company_id)}</span>}<span className="text-muted-foreground" title={humanLog(l).full}>{humanLog(l).text}</span></span>
+                  <span className="text-[0.6875rem] text-muted-foreground/80" title={clock(l.ts)}>{isHuman(l.actor) ? "You" : actorName(l.actor)} · {ago(l.ts)}</span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+      </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2" data-tour="steps">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" data-tour="steps">
         <StepCard n={1} title="Event" icon={ClipboardPen} href="/desk/brief"
           status={<>{/to be confirmed/i.test(e.dates || "") ? "Dates not set yet" : e.dates}{past ? ` · ${past} past sponsors` : " · add past sponsors to set the level"}</>}>
           <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/desk/brief" />}>Open</Button>
@@ -137,19 +159,6 @@ export default function Home() {
         </StepCard>
       </div>
 
-      {log.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-medium text-muted-foreground">Recently</h2>
-          <ol className="space-y-3" aria-live="polite">
-            {log.map((l: Any) => (
-              <li key={l.id} className="text-sm">
-                <span className="line-clamp-1">{l.company_id && <span className="mr-1 font-medium">{coName(l.company_id)}</span>}<span className="text-muted-foreground" title={humanLog(l).full}>{humanLog(l).text}</span></span>
-                <span className="text-xs text-muted-foreground" title={clock(l.ts)}>{isHuman(l.actor) ? "You" : actorName(l.actor)} · {ago(l.ts)}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
     </>
   );
 }
