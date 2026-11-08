@@ -7,6 +7,7 @@
 //   signed-in person's desk. The workspace comes from the request scope (inWorkspace), never from a query argument.
 //   The original desk is workspace "default" and stays where it always was (public schema / main file).
 import { AsyncLocalStorage } from "node:async_hooks";
+import { createHash } from "node:crypto";
 
 export type Row = Record<string, any>;
 export interface DB {
@@ -196,6 +197,10 @@ async function wsConn(ws: string): Promise<DB> {
 }
 
 async function migrate(d: DB, schema: string[], migrations: string[], table: string) {
+  // A fresh server checks one fingerprint instead of re-running every CREATE statement (about 30 round trips).
+  // Any change to the schema or migrations changes the fingerprint, and the full run below happens once.
+  const ver = createHash("sha1").update([table, ...schema, "--", ...migrations].join("\n")).digest("hex");
+  try { if ((await d.q(`SELECT v FROM schema_version WHERE k=$1`, [table]))[0]?.v === ver) return; } catch { /* first run: no table yet */ }
   // Concurrent cold starts: CREATE IF NOT EXISTS and ON CONFLICT make this safe to run twice.
   for (const s of schema) await d.q(s);
   const done = new Set((await d.q(`SELECT id FROM ${table}`)).map((r) => Number(r.id)));
@@ -205,6 +210,8 @@ async function migrate(d: DB, schema: string[], migrations: string[], table: str
     catch (e: any) { if (!/already exists|duplicate column|no such column|does not exist/i.test(String(e?.message || e))) throw new Error(`Migration ${i + 1} failed: ${e?.message || e}`); }
     await d.q(`INSERT INTO ${table} (id, sql, applied_at) VALUES ($1,$2,$3) ON CONFLICT (id) DO NOTHING`, [i + 1, migrations[i], new Date().toISOString()]);
   }
+  await d.q(`CREATE TABLE IF NOT EXISTS schema_version (k TEXT PRIMARY KEY, v TEXT)`);
+  await d.q(`INSERT INTO schema_version (k, v) VALUES ($1, $2) ON CONFLICT (k) DO UPDATE SET v=excluded.v`, [table, ver]);
 }
 
 /** Accounts, sessions, workspaces, sign-ins, audit, public links. Shared by every workspace. */
