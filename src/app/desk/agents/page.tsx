@@ -29,6 +29,7 @@ export default function AgentsPage() {
           {needs.map((s) => <Button key={s.id} size="sm" variant="outline" nativeButton={false} render={<a href={s.cta?.href} />}>{s.name} · {s.cta?.label}</Button>)}
         </div>
       )}
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
       <Panel><AgentFlow /></Panel>
 
       <Panel title="Activity" action={
@@ -40,7 +41,7 @@ export default function AgentsPage() {
       }>
         <ol className="divide-y">
           {log.map((l: Any) => (
-            <li key={l.id} className="grid gap-1 py-3 text-sm first:pt-0 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-4">
+            <li key={l.id} className="grid gap-0.5 py-2 text-[0.8125rem] first:pt-0 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-3">
               <div className="text-xs text-muted-foreground" title={when(l.ts)}>{isHuman(l.actor) ? "You" : actorName(l.actor)} · {ago(l.ts)}</div>
               <div className="min-w-0">
                 {l.company_id && <button type="button" className="mr-1.5 font-medium hover:underline" onClick={() => openCompany(l.company_id)}>{coName(l.company_id)}</button>}
@@ -52,6 +53,7 @@ export default function AgentsPage() {
         </ol>
         {all.length > limit && <Button variant="ghost" size="sm" className="mt-4" onClick={() => setLimit(limit + 15)}>Show more</Button>}
       </Panel>
+      </div>
     </>
   );
 }

@@ -259,3 +259,9 @@ export async function setSetting(k: string, v: string) {
   const d = await db();
   await d.q(`INSERT INTO settings (k, v) VALUES ($1, $2) ON CONFLICT (k) DO UPDATE SET v=excluded.v`, [k, v]);
 }
+
+/** Every setting of this desk in one query (the state page reads a dozen of them at once). */
+export async function allSettings(): Promise<Record<string, string>> {
+  const d = await db();
+  return Object.fromEntries((await d.q(`SELECT k, v FROM settings`)).map((r) => [String(r.k), String(r.v ?? "")]));
+}
