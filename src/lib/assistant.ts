@@ -140,6 +140,11 @@ export async function answer(message: string, _path = "", desk?: Promise<S>): Pr
   const q = norm(message);
   const R = (reply: string, actions: AssistAction[] = [], suggestions: string[] = []): AssistReply => ({ reply, actions, suggestions: suggestions.length ? suggestions : defaultSuggestions(s), engine: "rules" });
   if (!q) return R("Ask me anything about the desk: what is going on, why a company was picked, or how to do something.");
+  // Advice ("3 tips to negotiate", "how should I reply to a sponsor who…") deserves a real answer from the model, with
+  // the desk's facts, not a help page that happens to share a word like "price".
+  const advice = /\b(tips?|advice|advise|ideas?|suggestions?|negotiat\w*|convinc\w*|persuad\w*|strateg\w*|objection|pitch (line|deck idea)|cold call|follow.?up message|write (me |a |an )|draft (me |a |an )|what (should|do) i (say|reply|write|tell)|how (should|do|can) i (reply|respond|answer|handle|approach|convince|negotiate|pitch to)|best way to|mistakes?|example of)\b/.test(q)
+    && !/\b(attach|upload|button|page|tab|screen|connector|setting|tour|sidebar|click)\b/.test(q);
+  if (advice && canThink()) return { ...R(""), unmatched: true } as AssistReply;
   // "How do I…" questions come first, from the same guide as the Help page and the tour, so a new user always gets
   // the steps rather than numbers about the desk.
   const howTo = /^(how|where|can i|can we|can my|i want to|i wanna|i need to|what do i do to|how to|help me|is there a way|i am new|im new|new here|show me how|teach me)\b|\bhow (do|can|should) (i|we)\b|\bwhere (do|can) (i|we)\b/.test(q) ? findHowTo(q) : null;
@@ -199,6 +204,9 @@ export async function answer(message: string, _path = "", desk?: Promise<S>): Pr
   if (how) return R(howToAnswer(how), how.links, ["Show me the tour", "What should I do next?"]);
   return { ...R("I'm not sure what you mean yet. I can explain what the agents are doing, why a company was picked, who to contact, what's waiting for you, or how to do something. Try one of these:", [], defaultSuggestions(s)), unmatched: true } as AssistReply;
 }
+
+/** True when some model is connected to answer open questions. */
+function canThink() { return hasClaude() || hasSarvam() || !!connectorKey("gemini"); }
 
 function defaultSuggestions(s: S) {
   const out = ["What's going on?", "What should I do next?"];
@@ -278,13 +286,16 @@ export async function assist(message: string, path = "", lang = "", replyLang = 
   // Reading the desk and working out the language happen at the same time; the desk is read once per question.
   const desk = load();
   desk.catch(() => {});
+  // Most questions are English: answer them while the language check runs, and keep that answer if it is English.
+  const early = !lang ? answer(message, path, desk) : null;
+  early?.catch(() => {});
   const q = await toEnglish(message, lang);
   lap("language");
   const target = replyLang || q.lang;
   // Mirror how they write: Hinglish in, Hinglish out; Devanagari in, Devanagari out. A language picked in the menu
   // without typing in it gets its own script.
   const script = target === q.lang ? q.script : "native";
-  const base = await answer(q.text, path, desk);
+  const base = early && q.text === message ? await early : await answer(q.text, path, desk);
   lap("desk");
   let english = base.reply, engine: AssistReply["engine"] = "rules", suggestions = base.suggestions, actions = base.actions;
   const followUp = history.length > 0 && q.text.split(/\s+/).length <= 8 && /^(why|how|and|what about|then|so|ok|okay|tell me more|more|explain|example|really|which one|who else)\b/i.test(q.text.trim());
