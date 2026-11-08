@@ -61,7 +61,7 @@ export function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<Link href="/desk" prefetch={false} />} tooltip="SponsorDesk">
+            <SidebarMenuButton size="lg" render={<Link href="/desk" />} tooltip="SponsorDesk">
               <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-primary text-sm font-bold text-sidebar-primary-foreground">S</div>
               <div className="min-w-0 leading-tight">
                 <div className="truncate font-semibold tracking-tight">SponsorDesk</div>
@@ -73,13 +73,13 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         {groups.map((g, gi) => (
-          <SidebarGroup key={g.label || gi} className="py-1">
-            {g.label && <SidebarGroupLabel className="text-[0.6875rem] font-semibold tracking-wider text-sidebar-foreground/45 uppercase">{g.label}</SidebarGroupLabel>}
+          <SidebarGroup key={g.label || gi} className="py-0.5">
+            {g.label && <SidebarGroupLabel className="h-6 text-[0.6875rem] font-semibold tracking-wider text-sidebar-foreground/45 uppercase">{g.label}</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
                 {g.items.map((it) => (
                   <SidebarMenuItem key={it.url}>
-                    <SidebarMenuButton isActive={isOn(it.url)} tooltip={it.title} className="text-sidebar-foreground/75 hover:text-sidebar-foreground data-[active]:font-medium data-[active]:text-sidebar-foreground" render={<Link href={it.url} prefetch={false} />}>
+                    <SidebarMenuButton isActive={isOn(it.url)} tooltip={it.title} className="text-sidebar-foreground/75 hover:text-sidebar-foreground data-[active]:font-medium data-[active]:text-sidebar-foreground" render={<Link href={it.url} />}>
                       <it.icon />
                       <span>{it.title}</span>
                       {it.live && <span className="ml-auto size-1.5 animate-pulse rounded-full bg-sidebar-foreground group-data-[collapsible=icon]:hidden" aria-label="An agent is working" />}
@@ -96,7 +96,7 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         {goal > 0 && (
-          <div className="px-2 pb-1 group-data-[collapsible=icon]:hidden">
+          <div className="px-2 group-data-[collapsible=icon]:hidden">
             <div className="flex justify-between text-xs text-sidebar-foreground/60"><span>{lakh(won)} signed</span><span>of {lakh(goal)}</span></div>
             <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-sidebar-border"><div className="h-full rounded-full bg-sidebar-foreground/70" style={{ width: `${Math.min(100, (won / goal) * 100)}%` }} /></div>
           </div>
@@ -104,22 +104,22 @@ export function AppSidebar() {
         <SidebarMenu>
           {me?.owner && (
             <SidebarMenuItem>
-              <SidebarMenuButton isActive={isOn("/desk/admin")} tooltip="Activity" render={<Link href="/desk/admin" prefetch={false} />}>
+              <SidebarMenuButton isActive={isOn("/desk/admin")} tooltip="Activity" render={<Link href="/desk/admin" />}>
                 <Activity /><span>Activity</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
           <SidebarMenuItem data-tour="help">
-            <SidebarMenuButton isActive={isOn("/desk/help")} tooltip="Help" render={<Link href="/desk/help" prefetch={false} />}>
+            <SidebarMenuButton isActive={isOn("/desk/help")} tooltip="Help" render={<Link href="/desk/help" />}>
               <LifeBuoy /><span>Help</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton isActive={isOn("/desk/settings")} tooltip="Settings" render={<Link href="/desk/settings" prefetch={false} />}>
+            <SidebarMenuButton isActive={isOn("/desk/settings")} tooltip="Settings" render={<Link href="/desk/settings" />}>
               <Settings /><span>Settings</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          <SidebarMenuItem>
+          {me && <SidebarMenuItem>
             <SidebarMenuButton size="lg" tooltip="Sign out" onClick={() => api("/api/logout", {}).finally(() => { window.location.href = "/login"; })}>
               <div className="grid size-8 shrink-0 place-items-center rounded-full border border-sidebar-border bg-sidebar-accent text-xs font-medium">{String(me?.name || "?").slice(0, 1).toUpperCase()}</div>
               <div className="min-w-0 flex-1 leading-tight">
@@ -128,7 +128,7 @@ export function AppSidebar() {
               </div>
               <LogOut className="size-4 opacity-60" />
             </SidebarMenuButton>
-          </SidebarMenuItem>
+          </SidebarMenuItem>}
         </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />

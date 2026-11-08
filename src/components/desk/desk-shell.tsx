@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { Eye } from "lucide-react";
 
@@ -49,10 +49,13 @@ function ViewingBar({ name }: { name: string }) {
   );
 }
 
-export function DeskShell({ children, defaultOpen }: { children: ReactNode; defaultOpen: boolean }) {
+export function DeskShell({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(true);
+  useEffect(() => { if (/(?:^|; )sidebar_state=false/.test(document.cookie)) setOpen(false); }, []);
+  const change = (v: boolean) => { setOpen(v); document.cookie = `sidebar_state=${v}; path=/; max-age=${60 * 60 * 24 * 7}`; };
   return (
     <DeskProvider>
-      <SidebarProvider defaultOpen={defaultOpen} style={{ "--sidebar-width": "15rem" } as React.CSSProperties}>
+      <SidebarProvider open={open} onOpenChange={change} style={{ "--sidebar-width": "15rem" } as React.CSSProperties}>
         <VoiceProvider>
           <AppSidebar />
           <SidebarInset className="min-w-0 overflow-x-clip">
