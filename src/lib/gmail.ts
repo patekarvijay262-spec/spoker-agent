@@ -65,21 +65,36 @@ const b64url = (s: string) => b64(s).replace(/\+/g, "-").replace(/\//g, "_").rep
 const encHeader = (s: string) => (/^[\x20-\x7e]*$/.test(s) ? s : `=?UTF-8?B?${b64(s)}?=`);
 
 export const SAFE_EMAIL = /^[A-Za-z0-9._%+'-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-export async function send(o: { to: string; subject: string; body: string; threadId?: string | null; inReplyTo?: string | null; fromName?: string }) {
+export type Attachment = { name: string; mime: string; data: Buffer };
+export async function send(o: { to: string; subject: string; body: string; threadId?: string | null; inReplyTo?: string | null; fromName?: string; attachment?: Attachment | null }) {
   if (!SAFE_EMAIL.test(o.to || "")) throw new Error("Gmail 400: refused unsafe recipient address");
-  if (/[\r\n]/.test(o.subject + (o.fromName || "") + (o.inReplyTo || ""))) throw new Error("Gmail 400: refused header with a line break");
+  if (/[\r\n]/.test(o.subject + (o.fromName || "") + (o.inReplyTo || "") + (o.attachment?.name || ""))) throw new Error("Gmail 400: refused header with a line break");
   const from = await connectedEmail();
   const lines = [
     `From: ${o.fromName ? `${encHeader(o.fromName)} <${from}>` : from}`,
     `To: ${o.to}`,
     `Subject: ${encHeader(o.subject)}`,
     "MIME-Version: 1.0",
-    "Content-Type: text/plain; charset=UTF-8",
-    "Content-Transfer-Encoding: base64",
   ];
   if (o.inReplyTo) lines.push(`In-Reply-To: ${o.inReplyTo}`, `References: ${o.inReplyTo}`);
-  const raw = lines.join("\r\n") + "\r\n\r\n" + b64(o.body.replace(/\r?\n/g, "\r\n")).replace(/.{76}/g, "$&\r\n");
-  const sent = await api(`/messages/send`, { method: "POST", body: JSON.stringify({ raw: b64url(raw), ...(o.threadId ? { threadId: o.threadId } : {}) }) });
+  const text = b64(o.body.replace(/\r?\n/g, "\r\n")).replace(/.{76}/g, "$&\r\n");
+  let sent: any;
+  if (!o.attachment) {
+    lines.push("Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64");
+    const raw = lines.join("\r\n") + "\r\n\r\n" + text;
+    sent = await api(`/messages/send`, { method: "POST", body: JSON.stringify({ raw: b64url(raw), ...(o.threadId ? { threadId: o.threadId } : {}) }) });
+  } else {
+    // The organiser's deck goes as a real attachment. A whole message can be up to 35 MB through the upload endpoint.
+    const bnd = `sd-${Date.now().toString(36)}`;
+    const file = o.attachment.data.toString("base64").replace(/.{76}/g, "$&\r\n");
+    const raw = lines.concat(`Content-Type: multipart/mixed; boundary="${bnd}"`).join("\r\n") + "\r\n\r\n" +
+      `--${bnd}\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${text}\r\n` +
+      `--${bnd}\r\nContent-Type: ${o.attachment.mime}; name="${encHeader(o.attachment.name)}"\r\nContent-Disposition: attachment; filename="${encHeader(o.attachment.name)}"\r\nContent-Transfer-Encoding: base64\r\n\r\n${file}\r\n--${bnd}--`;
+    const t = await accessToken();
+    const res = await fetch(`${G.replace("/gmail/v1/", "/upload/gmail/v1/")}/messages/send?uploadType=media`, { method: "POST", headers: { authorization: `Bearer ${t}`, "content-type": "message/rfc822" }, body: raw, signal: AbortSignal.timeout(60000) });
+    sent = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`Gmail ${res.status}: ${JSON.stringify(sent).slice(0, 300)}`);
+  }
   let rfc = "";
   try {
     const meta = await api(`/messages/${sent.id}?format=metadata&metadataHeaders=Message-ID`);

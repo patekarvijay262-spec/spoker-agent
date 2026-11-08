@@ -9,13 +9,69 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/desk/bits";
 import { useDesk } from "@/components/desk/desk-provider";
-import { type Any, brandName } from "@/components/desk/format";
+import { type Any, api, brandName } from "@/components/desk/format";
 import { fillFor, fillTemplate, STARTER, TOKENS, unknownTokens } from "@/lib/template";
 
 // The organiser writes the email once, the way they would send it; the desk only fits it to each company and person.
 // The preview uses a real company and person from the desk, so what you read here is what lands in the Outbox.
 
 const SAMPLE = { co: { name: "Zepto", angle: "Your quick-commerce launches reach exactly the students who order late at night.", tier: "Gold", price_range: "INR 8L–16L" }, ct: { full_name: "Priya Shah", position: "Head of Brand" } };
+
+const PIECE = 3 * 1024 * 1024; // under Vercel's 4.5 MB request limit once base64 adds a third
+
+/** Your deck (PPT, PPTX or PDF): uploaded once, then sent with every first email, attached or as a link. */
+function DeckBox() {
+  const { data, load, flash, can } = useDesk();
+  const deck = data.settings?.outreach_deck;
+  const [pct, setPct] = useState<number | null>(null);
+  const call = (body: Any) => api("/api/files", body);
+  const upload = async (file: File) => {
+    try {
+      setPct(0);
+      const { id } = await call({ op: "start", name: file.name, size: file.size });
+      const buf = new Uint8Array(await file.arrayBuffer());
+      for (let i = 0, idx = 0; i < buf.length; i += PIECE, idx++) {
+        let bin = ""; const part = buf.subarray(i, i + PIECE);
+        for (let j = 0; j < part.length; j += 0x8000) bin += String.fromCharCode(...part.subarray(j, j + 0x8000));
+        await call({ op: "chunk", id, idx, data: btoa(bin) });
+        setPct(Math.round(((i + part.length) / buf.length) * 100));
+      }
+      await call({ op: "finish", id });
+      await load();
+      flash("Deck ready", `${file.name} goes with every first email.`, "success");
+    } catch (x: Any) { flash("Upload failed", x.message, "error"); }
+    finally { setPct(null); }
+  };
+  const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)} MB`;
+  return (
+    <div className="space-y-2 rounded-xl border p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-sm font-medium">Your deck</div>
+          <div className="truncate text-xs text-muted-foreground">{deck ? <>📎 {deck.name} · {mb(deck.size)}</> : "PPT, PPTX or PDF, up to 15 MB. Sent with every first email."}</div>
+        </div>
+        {can("operator") && (
+          <label className="inline-flex h-8 cursor-pointer items-center rounded-md border px-3 text-sm hover:bg-muted">
+            {pct != null ? `Uploading ${pct}%` : deck ? "Replace" : "Upload deck"}
+            <input type="file" accept=".pdf,.ppt,.pptx" className="sr-only" disabled={pct != null} onChange={(x) => { const f = x.target.files?.[0]; if (f) upload(f); x.target.value = ""; }} />
+          </label>
+        )}
+      </div>
+      {pct != null && <div className="h-1 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary transition-[width]" style={{ width: `${pct}%` }} /></div>}
+      {deck && can("operator") && (
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          {(["attach", "link"] as const).map((m) => (
+            <label key={m} className="inline-flex cursor-pointer items-center gap-1.5">
+              <input type="radio" name="deck-mode" checked={deck.mode === m} onChange={() => call({ op: "mode", mode: m }).then(load)} />
+              {m === "attach" ? "Attach the file" : "Share as a link (lands in inboxes more reliably)"}
+            </label>
+          ))}
+          <button type="button" className="ml-auto text-muted-foreground hover:text-foreground" onClick={() => call({ op: "remove" }).then(load)}>Remove</button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function DraftPage() {
   const { data, act, busy, can } = useDesk();
@@ -62,6 +118,7 @@ export default function DraftPage() {
           </div>
           <Textarea ref={area} value={body} onChange={(x) => setBody(x.target.value)} rows={14} aria-label="Your email" className="resize-y text-sm leading-relaxed" />
           <p className="text-xs text-muted-foreground">Your signature and postal address are added under it, plus a one-line way to say no if your draft has none.</p>
+          <DeckBox />
           {bad.length > 0 && <p className="text-xs text-destructive">The desk does not know {bad.map((b) => `{${b}}`).join(", ")}. Use the buttons above.</p>}
           <div className="flex flex-wrap gap-2">
             <Button disabled={!!busy || !can("operator") || bad.length > 0 || !dirty} onClick={() => act("save_template", { subject, body }, "Saving your draft")}><Check />Save</Button>
@@ -86,8 +143,9 @@ export default function DraftPage() {
           </div>
           <div className="rounded-xl border p-5 text-sm leading-relaxed">
             <div className="mb-3 border-b pb-3 font-medium">{fillTemplate(subject, v)}</div>
-            <div className="whitespace-pre-wrap">{fillTemplate(body, v)}</div>
+            <div className="whitespace-pre-wrap">{fillTemplate(body, v)}{data.settings?.outreach_deck?.mode === "link" ? `\n\nOur sponsorship deck: (link to ${data.settings.outreach_deck.name})` : ""}</div>
             <div className="mt-4 whitespace-pre-wrap text-muted-foreground">{[e.sender?.name, e.sender?.title, e.sender?.org].filter(Boolean).join("\n") || "Your signature"}</div>
+            {data.settings?.outreach_deck?.mode === "attach" && <div className="mt-4 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs">📎 {data.settings.outreach_deck.name}</div>}
           </div>
         </section>
       </div>

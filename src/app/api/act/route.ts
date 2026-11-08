@@ -133,6 +133,7 @@ async function run(b: any, me: User, origin: string) {
       await L.setStage(String(b.company_id), st, String(b.reason || "manual"), who); return { ok: true };
     }
     case "settings": {
+      if (b.daily_reminder !== undefined) await setSetting("daily_reminder", b.daily_reminder ? "1" : "0");
       for (const k of ["cap_new_per_day", "cap_total_per_day", "spacing_sec"]) if (b[k] !== undefined) {
         const n = Number(b[k]); if (!Number.isInteger(n) || n < 0 || n > 10000) throw new Error(`${k} must be a whole number`);
         await setSetting(k, String(n));

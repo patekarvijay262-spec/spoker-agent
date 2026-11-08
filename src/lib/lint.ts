@@ -51,7 +51,8 @@ export function lint(subject: string, body: string, sequence = "other", step = 0
     if (!postal) p.push("no postal address configured (Settings)");
     else if (!sig.toLowerCase().includes(postal.toLowerCase())) p.push(`signature missing postal address ('${postal}')`);
     if (step === 0) {
-      if (URL_RE.test(main)) p.push("link in first cold email body");
+      // The organiser's own deck link (/f/<long id>, chosen on the Draft page) is the one link a first email may carry.
+      if (URL_RE.test(main.replace(/https?:\/\/[^\s/]+\/f\/[A-Za-z0-9_-]{16,80}/g, ""))) p.push("link in first cold email body");
       if (/attach(ed|ment)|please find/.test(low)) p.push("attachment mentioned in first cold email");
     }
   }

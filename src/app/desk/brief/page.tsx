@@ -215,10 +215,10 @@ function Prefs() {
   const [cats, setCats] = useState<string[]>(e.sponsor_categories || []);
   const [brands, setBrands] = useState<string>((e.wanted_brands || []).join(", "));
   const [counts, setCounts] = useState<Record<string, number>>(e.category_counts || {});
-  const [people, setPeople] = useState<number>(e.contacts_per_company || 2);
+  const [people, setPeople] = useState<number>(e.contacts_per_company || 12);
   const n = (id: string) => counts[id] || 2;
   const total = cats.reduce((s, id) => s + n(id), 0);
-  const dirty = JSON.stringify(cats) !== JSON.stringify(e.sponsor_categories || []) || brands !== (e.wanted_brands || []).join(", ") || cats.some((id) => n(id) !== (e.category_counts || {})[id]) || people !== (e.contacts_per_company || 2);
+  const dirty = JSON.stringify(cats) !== JSON.stringify(e.sponsor_categories || []) || brands !== (e.wanted_brands || []).join(", ") || cats.some((id) => n(id) !== (e.category_counts || {})[id]) || people !== (e.contacts_per_company || 12);
   return (
     <Section title="Looking for" hint={cats.length ? `${total} sponsors: discovery fills each category to its number.` : "None picked: the desk chooses."}>
       <div className="flex flex-wrap gap-1.5">

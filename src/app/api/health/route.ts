@@ -2,6 +2,7 @@
 import { withUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { credits, hasCrustdata } from "@/lib/crustdata";
+import { hasApollo } from "@/lib/apollo";
 import { connectedEmail } from "@/lib/gmail";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ export async function GET(req: Request) {
   out.database = await check(async () => { const d = await db(); await d.q("SELECT 1"); return "connected"; });
   out.engine = { ok: true, detail: "Rules and templates decide; Sarvam adds voice and Indian languages when its key is set" };
   // Free call: the credit balance proves the key works without spending anything.
+  out.apollo = { ok: hasApollo(), detail: hasApollo() ? "set: fills companies short of verified people" : "APOLLO_API_KEY not set (optional)" };
   out.crustdata = !hasCrustdata() ? { ok: false, detail: "CRUSTDATA_API_KEY not set: company discovery and contact search are off" } : await check(async () => {
     const c = await credits();
     return `connected${c != null ? `, ${Math.round(c).toLocaleString("en-IN")} credits left` : ""}`;

@@ -7,6 +7,7 @@ import * as CD from "./crustdata";
 import { scoreContact, sponsorKind } from "./contacts";
 import { categoryById, industriesFor } from "./sponsor-categories";
 import * as PS from "./past-sponsors";
+import * as AP from "./apollo";
 import { chat, hasSarvam } from "./sarvam";
 
 export type Source = { url: string; title?: string; supports?: string; verified?: boolean; how?: string };
@@ -793,9 +794,10 @@ function pickOffer(cls: IClass, type: EventType, hc: number, hiringUp: boolean, 
 }
 
 const TITLE_WORDS: Record<string, string[]> = {
-  brand: ["brand", "marketing", "partnerships", "sponsorship", "campus", "communications", "alliances"],
-  event: ["partnerships", "sponsorship", "alliances", "events", "campus", "employer branding", "university relations", "developer relations", "community", "ecosystem", "talent acquisition"],
-  csr: ["csr", "foundation", "sustainability", "social impact", "corporate communications", "community"],
+  // Wide enough to find 10 to 15 useful people at a large company: everyone who owns brand, events, campus or partner budgets.
+  brand: ["brand", "marketing", "partnerships", "sponsorship", "campus", "communications", "alliances", "events", "experiential", "digital marketing", "growth", "media", "public relations"],
+  event: ["partnerships", "sponsorship", "alliances", "events", "campus", "employer branding", "university relations", "developer relations", "community", "ecosystem", "talent acquisition", "marketing", "brand"],
+  csr: ["csr", "foundation", "sustainability", "social impact", "corporate communications", "community", "marketing", "brand"],
 };
 
 function ownDomain(email: string, domains: string[]) {
@@ -893,7 +895,7 @@ export async function analyze(e: EventProfile, company: { name: string; domain?:
   const kind = sponsorKind(SEGMENT[cls], offer.model);
   const words = [...new Set([...TITLE_WORDS[kind], ...(offer.model === "hiring" ? ["talent acquisition", "campus", "university relations", "employer brand"] : [])])];
   // How many people to find per company (organiser's setting, 2 by default, up to 20): more people, more ways in.
-  const perCo = Math.max(1, Math.min(50, Math.round(Number(e.contacts_per_company) || 2)));
+  const perCo = Math.max(1, Math.min(50, Math.round(Number(e.contacts_per_company) || 12)));
   let people: any[] = [];
   if (!dropReason) { try { people = await CD.searchPeople(cid, coName, words, Math.min(100, Math.max(12, perCo * 3)), trace); } catch (err: any) { signals.push({ claim: `People search failed: ${String(err.message).slice(0, 120)}`, source: "crustdata" }); } }
   const orgWords = `${e.organizer} ${e.name}`.toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 3 && !/^(the|team|club|cell|fest|summit|society|college|event)$/.test(w));
@@ -941,6 +943,25 @@ export async function analyze(e: EventProfile, company: { name: string; domain?:
     } as FoundContact;
   });
   // Verified first, best placed first within each group, then the number the organiser asked for.
+  // Apollo tops up when Crustdata leaves the company short of verified people (cleaned and deduplicated first).
+  // `email_verified_by_crustdata` means "a data provider verified this address", for Apollo too.
+  const verifiedN = contacts.filter((c) => c.email_verified_by_crustdata).length;
+  if (!dropReason && verifiedN < perCo && AP.hasApollo() && domains[0]) {
+    try {
+      const more = await AP.peopleAt({ name: coName, domain: domains[0] }, words, perCo - verifiedN);
+      const known = new Set(contacts.flatMap((x) => [x.email?.toLowerCase(), AP.cleanLinkedIn(x.evidence?.[0]?.url || ""), x.full_name.toLowerCase()]).filter(Boolean) as string[]);
+      for (const p of more) {
+        if ([p.email, p.linkedin, p.full_name.toLowerCase()].some((k) => k && known.has(k))) continue;
+        contacts.push({
+          kind: "alternative", full_name: p.full_name, designation: p.title, email: p.email, email_source: "apollo (verified)", email_verified_by_crustdata: true,
+          phone: p.phone, phone_source: p.phone ? "apollo" : "", responsibility: "", left_company: false, iitb_alum: "unknown", warm_path: "", hook: "",
+          evidence: p.linkedin ? [{ claim: `${p.title} at ${coName}`, url: p.linkedin }] : [], evidence_date: new Date().toISOString().slice(0, 10),
+          reason: "Found through Apollo with a verified work email", one_liner: `${p.title} at ${coName}.`,
+        } as FoundContact);
+      }
+      signals.push({ claim: `Apollo added ${more.length} verified ${more.length === 1 ? "person" : "people"}`, source: "apollo" });
+    } catch (err: any) { signals.push({ claim: `Apollo lookup failed: ${String(err.message).slice(0, 100)}`, source: "apollo" }); }
+  }
   const kept = [...contacts.filter((c) => c.email_verified_by_crustdata), ...contacts.filter((c) => !c.email_verified_by_crustdata)]
     .slice(0, perCo).map((c, i) => ({ ...c, kind: (i === 0 ? "primary" : "alternative") as FoundContact["kind"] }));
   const cEmail = String(g(c, "funding.contact_email") || "");

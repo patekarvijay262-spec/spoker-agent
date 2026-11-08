@@ -52,6 +52,9 @@ const GLOBAL_MIGRATIONS = [
 ];
 
 const SCHEMA = [
+  // The organiser's deck (PPT or PDF), stored in pieces so a 15 MB file fits Vercel's 4.5 MB request limit.
+  `CREATE TABLE IF NOT EXISTS files (id TEXT PRIMARY KEY, name TEXT, mime TEXT, size INTEGER, chunks INTEGER, created_at TEXT)`,
+  `CREATE TABLE IF NOT EXISTS file_chunks (file_id TEXT, idx INTEGER, data TEXT, PRIMARY KEY (file_id, idx))`,
   `CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT)`,
   `CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, profile TEXT, updated_at TEXT)`,
   `CREATE TABLE IF NOT EXISTS companies (id TEXT PRIMARY KEY, name TEXT, domain TEXT, segment TEXT,

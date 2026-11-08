@@ -203,6 +203,46 @@ let fails = 0; const eq = (n: string, g: any, w: any) => { const ok = JSON.strin
   eq("waves: the 3 best first (primary leads); the next 3 wait until that wave has run its course", [w1.queued, w1.people[0], w1.left, w2.queued, w3.queued], [3, "Nina Rao", 2, 0, 0]);
   const S = await import("../src/lib/sponsor-categories");
   eq("seats per category map to real industry labels", [S.categoryById("food")?.industries.includes("Food and Beverage Manufacturing"), S.categoryById("fintech")?.industries.includes("Banking")], [true, true]);
+  // Apollo data is cleaned before it is kept: names, titles, verified own-domain emails, no role inboxes, +91 phones, no repeats.
+  const AP = await import("../src/lib/apollo");
+  const apCo = { name: "Zepto", domain: "zepto.com" };
+  const raw = [
+    { name: "PRIYA SHAH, MBA 🚀", title: "Head of Brand | Ex-Google | Speaker", email: "Priya.Shah@zepto.com", email_status: "verified", linkedin_url: "http://in.linkedin.com/in/Priya-Shah-123/", organization: { primary_domain: "zepto.com" }, phone_numbers: [{ sanitized_number: "09876543210", type: "mobile" }] },
+    { name: "Rahul Mehta", title: "Marketing Manager at Zepto", email: "rahul@zepto.com", email_status: "guessed", organization: { primary_domain: "zepto.com" } },
+    { name: "Asha Rao", title: "Brand Lead", email: "asha@oldco.in", email_status: "verified", organization: { primary_domain: "zepto.com" } },
+    { name: "Team Zepto", title: "Marketing", email: "marketing@zepto.com", email_status: "verified", organization: { primary_domain: "zepto.com" } },
+    { name: "Dev Iyer", title: "Partnerships Manager", email: "dev@zepto.com", email_status: "verified", organization: { primary_domain: "zepto.com" }, phone_numbers: [{ sanitized_number: "+912240001234", type: "work_hq" }] },
+  ];
+  const cleaned = raw.map((p) => AP.cleanPerson(p, apCo)).filter(Boolean) as any[];
+  eq("Apollo cleaning: only verified people at the company, tidy fields", cleaned.map((c) => `${c.full_name}|${c.title}|${c.email}|${c.linkedin}|${c.phone}`),
+    ["Priya Shah|Head of Brand|priya.shah@zepto.com|https://www.linkedin.com/in/priya-shah-123|+919876543210", "Dev Iyer|Partnerships Manager|dev@zepto.com||"]);
+  eq("Apollo cleaning: the same person from two sources is kept once", AP.dedupe([{ full_name: "Priya Shah", email: "priya.shah@zepto.com" }, { full_name: "Priya  Shah", linkedin: "x" }, { full_name: "Dev Iyer" }]).length, 2);
+  // Your deck: uploaded in pieces, only PDF or PowerPoint, attached by default or shared as a link in the email.
+  const FL = await import("../src/lib/files");
+  const up = await FL.startUpload("Techfest Deck.pdf", 10);
+  await FL.putChunk(up.id, 1, Buffer.from("world").toString("base64"));
+  await FL.putChunk(up.id, 0, Buffer.from("hello").toString("base64"));
+  const myDeck = await FL.finishUpload(up.id, "https://desk.example");
+  eq("deck: pieces join into one file, attached by default", [(await FL.readFile(up.id)).toString(), myDeck.mode, myDeck.mime], ["helloworld", "attach", "application/pdf"]);
+  let notDeck = ""; try { await FL.startUpload("setup.exe", 10); } catch (e: any) { notDeck = e.message; }
+  eq("deck: only PDF or PowerPoint is accepted", /PDF or a PowerPoint/.test(notDeck), true);
+  await FL.setDeckMode("link");
+  await d.q(`INSERT INTO companies (id, name, domain, stage, draft_subject, draft_body, angle, tier, price_range, updated_at) SELECT 'deck-co', 'Deck Foods', 'deckfoods.in', 'CONTACT_READY', draft_subject, draft_body, angle, tier, price_range, updated_at FROM companies WHERE id='acme-in'`);
+  await d.q(`INSERT INTO contacts (id, company_id, full_name, position, email, email_status, status, is_primary, kind, relevance, created_at) VALUES ('deck-co--ira-sen','deck-co','Ira Sen','Brand Lead','ira.sen@deckfoods.in','VERIFIED','active',1,'primary',80,$1)`, [new Date().toISOString()]);
+  await F.queueWave("deck-co");
+  const dm = (await d.q(`SELECT body FROM messages WHERE contact_id='deck-co--ira-sen'`))[0];
+  eq("deck: link mode puts the deck link in the email", (dm?.body || "").includes(`https://desk.example/f/${up.id}`), true);
+  // Today: plain lines for what needs a yes, what goes out on its own, meetings today or tomorrow, new replies.
+  const TI = await import("../src/lib/today-items");
+  const noon = Date.parse("2026-11-09T06:30:00Z"); // 12:00 IST
+  const ti = TI.todayItems({
+    messages: [{ status: "drafted" }, { status: "drafted" }, { status: "approved", step: 0, scheduled_for: "2026-11-09T04:00:00Z" }, { status: "approved", step: 1, scheduled_for: "2026-11-09T05:00:00Z" }, { status: "approved", step: 1, scheduled_for: "2026-11-12T05:00:00Z" }],
+    meetings: [{ company_id: "z", start_at: "2026-11-10T09:30:00Z", status: "booked" }],
+    replies: [{ received_at: new Date(Date.now() - 3600e3).toISOString() }],
+    exceptions: [{ kind: "no_email", status: "open" }, { kind: "below_floor", status: "open" }],
+    companies: [{ id: "z", name: "Zepto" }],
+  }, noon).map((i) => i.text);
+  eq("today: a calm list of what needs you and what runs on its own", ti, ["2 emails are waiting for your yes", "1 approved email goes out today", "1 follow-up goes out today, on its own", "Meeting with Zepto tomorrow at 15:00", "1 new reply from sponsors", "1 offer needs your call"]);
   // Verified people only (the default): nobody without a verified work email is kept or written to.
   await setSetting("verified_only", "1");
   await d.q(`INSERT INTO companies (id, name, domain, stage, reasons, updated_at) SELECT 'vo-co', 'Acme Fintech Two', 'acme.in', 'PROSPECT', reasons, updated_at FROM companies WHERE id='acme-in'`);

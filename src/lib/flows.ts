@@ -10,6 +10,7 @@ import * as PS from "./past-sponsors";
 import { toEnglish } from "./sarvam";
 import { fillFor, fillTemplate, unknownTokens, type Template } from "./template";
 import { lint } from "./lint";
+import * as FL from "./files";
 
 export const FALLBACK_DECK = "/fallback/sponsorship-deck.pdf";
 export const FALLBACK_MOU = "/fallback/mou.pdf";
@@ -60,7 +61,7 @@ const cleanPrefs = (p?: BriefPrefs) => ({
   sponsor_categories: (p?.categories || []).map(String).slice(0, 14),
   wanted_brands: (p?.brands || []).map((b) => String(b).trim()).filter(Boolean).slice(0, 25),
   // How many sponsors per picked category (1 to 10); only picked categories keep a number.
-  contacts_per_company: Math.max(1, Math.min(50, Math.round(Number(p?.people) || 2))),
+  contacts_per_company: Math.max(1, Math.min(50, Math.round(Number(p?.people) || 12))),
   category_counts: Object.fromEntries(Object.entries(p?.counts || {}).filter(([id]) => (p?.categories || []).includes(id)).map(([id, n]) => [id, Math.max(1, Math.min(50, Math.round(Number(n) || 1)))])),
 });
 
@@ -302,9 +303,13 @@ export async function setPrimaryContact(contactId: string, who: string) {
  * priced offer. Either way it ends with the signature (and postal address) the linter requires. */
 async function composeFor(co: any, ct: any, e: A.EventProfile) {
   const t = json<Template | null>(await getSetting("outreach_template", ""), null);
+  // Link mode: the deck goes in as one line instead of an attachment.
+  const deck = await FL.currentDeck();
+  const link = deck?.mode === "link" ? await FL.deckLink(deck) : "";
+  const withLink = (b: string) => (link && !b.includes(link) ? `${b}\n\nOur sponsorship deck: ${link}` : b);
   if (t?.body?.trim()) {
     const v = fillFor(co, ct, e);
-    let body = fillTemplate(t.body, v);
+    let body = withLink(fillTemplate(t.body, v));
     // Every first email needs a way to say no (the linter checks it); add the line when the draft has none.
     if (lint("x", A.withSignature(body, e), "cold", 0, "").some((p) => p.startsWith("missing opt-out"))) {
       const at = body.search(/\n\s*(best|regards|warm regards|kind regards|thanks|thank you|cheers|sincerely)\b[^\n]*\n+[^\n]+\s*$/i);
@@ -316,7 +321,7 @@ async function composeFor(co: any, ct: any, e: A.EventProfile) {
     const signedOff = signed ? A.withSignature(body, { ...e, sender: { ...(e.sender || {}), name: "" } as any }).replace(/\n\nBest regards,\n/, "\n\n") : A.withSignature(body, e);
     return { subject: fillTemplate(t.subject || "{company} x {event}", v), body: signedOff };
   }
-  return { subject: co.draft_subject || `${co.name} x ${e.name}`, body: A.withSignature(String(co.draft_body).replace(/^(Hi|Hello|Dear)\s+[^,\n]+,/i, `Hi ${firstName(ct.full_name)},`), e) };
+  return { subject: co.draft_subject || `${co.name} x ${e.name}`, body: A.withSignature(withLink(String(co.draft_body).replace(/^(Hi|Hello|Dear)\s+[^,\n]+,/i, `Hi ${firstName(ct.full_name)},`)), e) };
 }
 
 /** "Not these, show me others": every company not written to yet is set aside (kept on record, so discovery never
@@ -440,6 +445,8 @@ export async function sendDue(budgetMs = 200000) {
   const out: string[] = [];
   if (!(await G.connectedEmail())) return { sent: 0, notes: ["Gmail is not connected: approved emails wait in the outbox (draft mode)."] };
   let sent = 0;
+  const deck = await FL.currentDeck();
+  let deckFile: G.Attachment | undefined;
   for (const m of await L.due()) {
     if (Date.now() - t0 > budgetMs) { out.push("Time budget reached; the rest go in the next run."); break; }
     let c = await L.claim(m.key);
@@ -464,7 +471,9 @@ export async function sendDue(budgetMs = 200000) {
     try { prev = await lastSent(m.contact_id); } catch (err: any) { await L.markFailed(m.key).catch(() => {}); out.push(`${m.key}: not sent (database): ${err.message}`); continue; }
     let r: { id: string; threadId: string; rfcId: string };
     try {
-      r = await G.send({ to: m.to_email, subject: m.subject, body: m.body, threadId: prev?.thread_id || null, inReplyTo: prev?.rfc_message_id || null, fromName: e?.sender?.name });
+      // The organiser's deck rides on the first email to each person (follow-ups stay light).
+      const attach = m.sequence === "cold" && num(m.step) === 0 && deck?.mode === "attach" ? deckFile ??= { name: deck.name, mime: deck.mime, data: await FL.readFile(deck.id) } : null;
+      r = await G.send({ to: m.to_email, subject: m.subject, body: m.body, threadId: prev?.thread_id || null, inReplyTo: prev?.rfc_message_id || null, fromName: e?.sender?.name, attachment: attach });
     } catch (err: any) {
       const msg = String(err?.message || err);
       // Only a 4xx rejection (or no token) proves Gmail did not send it. Timeouts and 5xx are ambiguous.

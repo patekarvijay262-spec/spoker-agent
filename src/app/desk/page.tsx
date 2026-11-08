@@ -9,6 +9,7 @@ import { ArrowRight, Building2, ClipboardPen, PenLine, Send } from "lucide-react
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDesk } from "@/components/desk/desk-provider";
+import { todayItems } from "@/lib/today-items";
 import { actorName, type Any, ago, brandName, clock, humanLog, isDecision, isHuman, visibleLog } from "@/components/desk/format";
 
 // Home: the organiser's four steps side by side. Each one says plainly where it stands and opens with one click;
@@ -51,6 +52,36 @@ function Welcome() {
   );
 }
 
+/** Today, in a few lines: what needs a yes, what goes out on its own, meetings and new replies. Nothing to
+ * remember; the same list arrives by email each morning. */
+function Today() {
+  const { data, act, can } = useDesk();
+  const items = todayItems({ messages: data.messages || [], meetings: data.meetings || [], replies: data.replies || [], exceptions: data.exceptions || [], companies: data.companies || [] });
+  const on = data.settings?.daily_reminder !== false;
+  const gmail = !!data.settings?.gmail;
+  return (
+    <section className="rounded-xl bg-muted/40 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-medium">Today</h2>
+        {can("admin") && gmail && (
+          <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+            <input type="checkbox" checked={on} onChange={() => act("settings", { daily_reminder: !on }, "Saving")} />
+            Email me this list at 9 am
+          </label>
+        )}
+      </div>
+      {items.length ? (
+        <ul className="mt-3 space-y-2">
+          {items.map((i) => (
+            <li key={i.text}><Link href={i.href} className="group flex items-center gap-2 text-sm"><span className="size-1.5 shrink-0 rounded-full bg-foreground/60" /><span className="group-hover:underline">{i.text}</span></Link></li>
+          ))}
+        </ul>
+      ) : <p className="mt-2 text-sm text-muted-foreground">Nothing needs you today. Follow-ups and reminders run on their own.</p>}
+      {!gmail && <p className="mt-3 text-xs text-muted-foreground">Connect Gmail in Settings to get this list by email every morning.</p>}
+    </section>
+  );
+}
+
 export default function Home() {
   const { data, busy, progress, autopilot, can } = useDesk();
   const [count, setCount] = useState(10);
@@ -62,6 +93,7 @@ export default function Home() {
   const msgs: Any[] = data.messages || [];
   const waiting = msgs.filter((m) => m.status === "drafted").length;
   const sent = msgs.filter((m) => m.status === "sent").length;
+  const approved = msgs.filter((m) => m.status === "approved").length;
   const replies = (data.replies || []).length + (data.exceptions || []).filter(isDecision).length;
   const seatTotal = Object.entries(e.category_counts || {}).filter(([id]) => (e.sponsor_categories || []).includes(id)).reduce((s, [, n]) => s + (Number(n) || 0), 0);
   const past = (e.past_sponsor_list || []).length;
@@ -76,6 +108,8 @@ export default function Home() {
         <h1 className="text-2xl font-semibold tracking-tight">{e.name}</h1>
         <p className="text-sm text-muted-foreground">{[e.organizer, e.dates, e.city].filter(Boolean).join(" · ")}</p>
       </div>
+
+      <Today />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <StepCard n={1} title="Event" icon={ClipboardPen} href="/desk/brief"
@@ -98,7 +132,7 @@ export default function Home() {
         </StepCard>
 
         <StepCard n={4} title="Send" icon={Send} href="/desk/outbox"
-          status={waiting || sent || replies ? [waiting && `${waiting} ready to send`, sent && `${sent} sent`, replies && `${replies} replies`].filter(Boolean).join(" · ") : "Nothing to send yet."}>
+          status={waiting || approved || sent || replies ? [waiting && `${waiting} waiting for your yes`, approved && `${approved} approved, going out on schedule`, sent && `${sent} sent`, replies && `${replies} replies`].filter(Boolean).join(" · ") : "Nothing to send yet."}>
           <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/desk/outbox" />}>Open</Button>
         </StepCard>
       </div>
