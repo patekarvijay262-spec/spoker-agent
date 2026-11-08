@@ -1,3 +1,4 @@
+import { loadConnectorKeys } from "@/lib/connectors";
 // The morning reminder (Vercel Cron, 9:00 IST every day): one short email per desk listing today's emails and
 // meetings. Cron only; a desk that fails never stops the others.
 import { isCron } from "@/lib/auth";
@@ -11,7 +12,7 @@ export async function GET(req: Request) {
   const origin = new URL(req.url).origin;
   const results: Record<string, any> = {};
   for (const ws of await allWorkspaces()) {
-    try { results[ws] = await inWorkspace(ws, () => sendReminder(origin)); }
+    try { results[ws] = await inWorkspace(ws, async () => { await loadConnectorKeys().catch(() => {}); return sendReminder(origin); }); }
     catch (e: any) { results[ws] = { error: String(e?.message || e).slice(0, 200) }; }
   }
   return Response.json(results);

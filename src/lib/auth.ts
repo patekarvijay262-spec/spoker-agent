@@ -112,7 +112,7 @@ export async function recordAuth(e: AuthEvent) {
     if (e.ok && e.userId && e.method !== "logout") await g.q(`UPDATE users SET last_login_at=$1 WHERE id=$2`, [nowIso(), e.userId]);
   } catch (err) { console.error("recordAuth", err); } // never block a sign-in on the audit trail
 }
-const SECRET_KEYS = /password|token|secret|body|draft_body|notes|tidy|answers/i;
+const SECRET_KEYS = /password|token|secret|body|draft_body|notes|tidy|answers|^key$|api_?key/i; // never log keys pasted in Connectors
 /** One line per action, with the request trimmed: no passwords, no email bodies, long text cut. */
 export async function audit(user: User, op: string, input: Record<string, any> = {}, ok = true, error = "") {
   try {

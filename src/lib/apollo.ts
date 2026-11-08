@@ -3,14 +3,15 @@
 // cleaned before the desk keeps it: real names, short titles, verified addresses on the company's own domain,
 // no role inboxes, LinkedIn links in one form, phone numbers in +91 form, and no duplicates.
 import { SAFE_EMAIL } from "./gmail";
+import { connectorKey } from "./connectors";
 
 const BASE = "https://api.apollo.io/api/v1";
-export const hasApollo = () => !!process.env.APOLLO_API_KEY;
+export const hasApollo = () => !!connectorKey("apollo");
 
 async function call(path: string, body: any, ms = 30000) {
   const res = await fetch(BASE + path, {
     method: "POST", signal: AbortSignal.timeout(ms),
-    headers: { "x-api-key": process.env.APOLLO_API_KEY || "", "content-type": "application/json", "cache-control": "no-cache", accept: "application/json" },
+    headers: { "x-api-key": connectorKey("apollo"), "content-type": "application/json", "cache-control": "no-cache", accept: "application/json" },
     body: JSON.stringify(body),
   });
   const j: any = await res.json().catch(() => ({}));

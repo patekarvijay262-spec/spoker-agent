@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/desk/bits";
 import { BriefComposer } from "@/components/desk/brief-composer";
+import { ConnectorsPanel } from "@/components/desk/connectors-panel";
 import { useDesk } from "@/components/desk/desk-provider";
 import { type Any, api, host, inr, lakh } from "@/components/desk/format";
 import { SPONSOR_CATEGORIES } from "@/lib/sponsor-categories";
@@ -284,6 +285,9 @@ export default function BriefPage() {
         <PastSponsors />
         <Prefs />
         <Sources />
+        <Section wide tour="event-connectors" title="Connectors" hint="Services and tools this desk uses: Gmail, Apollo, Claude, Canva and more.">
+          <ConnectorsPanel compact />
+        </Section>
       </div>
     </>
   );

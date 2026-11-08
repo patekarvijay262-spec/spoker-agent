@@ -1,6 +1,8 @@
 import { audit, hashPassword, RANK, randomToken, requireUser, revokeAll, type Role, runAs, type User } from "@/lib/auth";
 import { db, gdb, setSetting, nowIso, uid } from "@/lib/db";
 import * as L from "@/lib/ledger";
+import * as CN from "@/lib/connectors";
+import * as FL from "@/lib/files";
 import * as F from "@/lib/flows";
 import * as G from "@/lib/gmail";
 import * as IG from "@/lib/instagram";
@@ -15,7 +17,7 @@ const ROLE: Record<string, Role> = {
   mou: "operator", send_mou: "operator", nurture: "operator", replies: "operator", reconcile: "operator", contact_reviewed: "operator", set_primary: "operator", prepare_outreach: "operator",
   lock_floor: "approver", approve: "approver", approve_many: "approver", reject: "approver", send: "approver", resolve: "approver",
   confirm_meeting: "approver", stage: "approver", suppress: "approver", delivery: "approver",
-  settings: "admin", reset: "admin", forget: "admin", user_add: "admin", user_update: "admin", sessions_revoke: "admin", google_disconnect: "admin",
+  settings: "admin", reset: "admin", connector_save: "admin", connector_remove: "admin", tool_add: "admin", tool_remove: "admin", forget: "admin", user_add: "admin", user_update: "admin", sessions_revoke: "admin", google_disconnect: "admin",
 };
 const STAGES = new Set(["PROSPECT", "QUALIFIED", "CONTACT_READY", "CONTACTED", "FOLLOWUP_1", "FOLLOWUP_2", "REPLIED", "MEETING_REQUESTED", "MEETING_SCHEDULED", "MEETING_DONE", "NEGOTIATING", "MOU_DRAFTED", "MOU_SENT", "MOU_SIGNED", "PO_RECEIVED", "INVOICED", "PAID", "INKIND_CONFIRMED", "NURTURE", "DELIVERED", "REPORTED", "RENEWAL", "NO_RESPONSE", "LOST", "OPTED_OUT", "BOUNCED", "DISQUALIFIED", "PARKED"]);
 const ROLES = new Set(["admin", "approver", "operator", "readonly"]);
@@ -59,6 +61,16 @@ async function run(b: any, me: User, origin: string) {
     case "past_sponsors": return F.refreshPastSponsors(b.links || {}, who);
     case "prefs": return F.setPrefs(b.prefs || {}, who);
     case "replace_companies": return F.replaceCompanies(who);
+    // Connectors: a desk's own keys (encrypted) and any other tool the team uses.
+    case "connector_save": return CN.saveConnectorKey(String(b.id || ""), String(b.key || ""));
+    case "connector_remove": return CN.removeConnectorKey(String(b.id || ""));
+    case "tool_add": {
+      const t = await CN.addTool({ name: b.name, url: b.url, key: b.key, note: b.note });
+      if (b.use_as_deck && b.url) await FL.setDeckLink(String(b.url), String(b.name || ""));
+      return t;
+    }
+    case "tool_remove": return CN.removeTool(String(b.id || ""));
+    case "deck_link": return FL.setDeckLink(String(b.url || ""), String(b.name || ""));
     case "add_past_sponsors": return F.addPastSponsors((Array.isArray(b.names) ? b.names : []).map(String), who);
     case "save_template": return F.saveTemplate({ subject: String(b.subject || ""), body: String(b.body || "") }, who, !!b.apply);
     case "lock_floor": {

@@ -21,7 +21,7 @@ import { useVoiceControl, VOICE_EXAMPLES, VoiceButton } from "./voice-control";
 const PAGES = [
   ["Home", "/desk"], ["Event", "/desk/brief"], ["Your draft", "/desk/draft"], ["Companies", "/desk/companies"], ["Pipeline", "/desk/pipeline"], ["Agents", "/desk/agents"],
   ["Send", "/desk/outbox"], ["Replies", "/desk/inbox"], ["People", "/desk/people"], ["Meetings", "/desk/meetings"], ["Deals and MOUs", "/desk/deals"],
-  ["Sponsor updates", "/desk/sponsors"], ["Settings", "/desk/settings"], ["Help", "/desk/help"],
+  ["Sponsor updates", "/desk/sponsors"], ["Settings", "/desk/settings"], ["Help", "/desk/help"], ["Connectors", "/desk/connectors"],
 ];
 const TITLES: Record<string, string> = { ...Object.fromEntries(PAGES.map(([t, u]) => [u, t])), "/desk/admin": "Activity" };
 

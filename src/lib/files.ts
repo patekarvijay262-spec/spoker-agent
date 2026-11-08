@@ -10,6 +10,17 @@ export const DECK_TYPES: Record<string, string> = {
 export const MAX_DECK = 15 * 1024 * 1024; // Gmail allows 25 MB per email; base64 adds a third
 export type Deck = { id: string; name: string; mime: string; size: number; mode: "attach" | "link"; url?: string };
 
+/** A deck that lives elsewhere (Canva, Google Slides, Drive): sent as a link in every first email. */
+export async function setDeckLink(url: string, name = "") {
+  const u = String(url || "").trim();
+  if (!/^https:\/\/\S+$/i.test(u)) throw new Error("Paste the share link of your deck (it starts with https://).");
+  const old = await currentDeck();
+  if (old && !old.url) await removeFile(old.id);
+  const deck: Deck = { id: "link", name: name || new URL(u).hostname.replace(/^www\./, ""), mime: "", size: 0, mode: "link", url: u };
+  await setSetting("outreach_deck", JSON.stringify(deck));
+  return deck;
+}
+
 export async function currentDeck(): Promise<Deck | null> {
   return json<Deck | null>(await getSetting("outreach_deck", ""), null);
 }
@@ -50,13 +61,14 @@ export async function finishUpload(id: string, origin: string) {
 export async function setDeckMode(mode: "attach" | "link") {
   const deck = await currentDeck();
   if (!deck) throw new Error("Upload your deck first.");
+  if (deck.url) throw new Error("A deck from a link can only be shared as a link.");
   await setSetting("outreach_deck", JSON.stringify({ ...deck, mode: mode === "link" ? "link" : "attach" }));
   return { ok: true };
 }
 
 export async function removeDeck() {
   const deck = await currentDeck();
-  if (deck) await removeFile(deck.id);
+  if (deck && !deck.url) await removeFile(deck.id);
   await setSetting("outreach_deck", "");
   return { ok: true };
 }
@@ -78,6 +90,7 @@ export async function fileMeta(id: string) {
 
 /** The public link to the deck, for link mode: /f/<id> on the address the deck was uploaded from. */
 export async function deckLink(deck: Deck) {
+  if (deck.url) return deck.url;
   const origin = await getSetting("public_origin", process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "");
   return origin ? `${origin}/f/${deck.id}` : "";
 }

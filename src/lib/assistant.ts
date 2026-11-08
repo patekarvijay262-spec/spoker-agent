@@ -6,9 +6,11 @@ import { hasCrustdata } from "./crustdata";
 import { chat, fromEnglish, hasSarvam, toEnglish } from "./sarvam";
 import { categoryById } from "./sponsor-categories";
 import { findHowTo, howToAnswer } from "./guide";
+import { connectorKey } from "./connectors";
+import { askClaude, hasClaude } from "./claude";
 
 export type AssistAction = { label: string; href?: string; open?: string };
-export type AssistReply = { reply: string; actions: AssistAction[]; suggestions: string[]; engine: "rules" | "gemini" | "sarvam"; lang?: string; script?: "roman" | "native"; unmatched?: boolean };
+export type AssistReply = { reply: string; actions: AssistAction[]; suggestions: string[]; engine: "rules" | "gemini" | "sarvam" | "claude"; lang?: string; script?: "roman" | "native"; unmatched?: boolean };
 
 const STAGE: Record<string, string> = {
   PROSPECT: "found, not scored yet", QUALIFIED: "scored", CONTACT_READY: "contact found", CONTACTED: "offer sent", FOLLOWUP_1: "follow-up 1 sent", FOLLOWUP_2: "follow-up 2 sent",
@@ -245,8 +247,10 @@ async function geminiFree(key: string, prompt: string) {
 /** Free-form answer from whichever model is configured: Gemini first (free tier), else Sarvam 105B. "" when neither works. */
 /** Free-form answer: Sarvam first (the desk's chosen AI, and fast), Gemini only as a fallback. "" when neither works. */
 async function freeform(prompt: string) {
+  // A desk that connected Claude chose it for open questions, so it goes first; Sarvam and Gemini follow.
+  if (hasClaude()) { const t = await askClaude(FREEFORM, prompt).catch((e) => { console.error(e); return ""; }); if (t) return { text: t, engine: "claude" as const }; }
   if (hasSarvam()) { const t = await chat(FREEFORM, prompt, 1200, 15000, 0.5).catch(() => ""); if (t) return { text: t, engine: "sarvam" as const }; }
-  const g = process.env.GEMINI_API_KEY;
+  const g = connectorKey("gemini");
   if (g) { const t = await geminiFree(g, prompt).catch(() => ""); if (t) return { text: t, engine: "gemini" as const }; }
   return null;
 }
@@ -281,9 +285,9 @@ export async function assist(message: string, path = "", lang = "", replyLang = 
       english = body; engine = r.engine; actions = [];
       if (ups.length) suggestions = [...ups, ...base.suggestions].slice(0, 4);
     }
-  } else if (process.env.GEMINI_API_KEY && !hasSarvam() && message.length <= 600) {
+  } else if (connectorKey("gemini") && !hasSarvam() && message.length <= 600) {
     // Rephrasing desk facts is only worth a round trip on desks without Sarvam; with Sarvam the facts go out as they are.
-    const phrased = await geminiPhrase(process.env.GEMINI_API_KEY, `QUESTION: ${q.text}\n\nFACTS:\n${base.reply}`).catch(() => "");
+    const phrased = await geminiPhrase(connectorKey("gemini"), `QUESTION: ${q.text}\n\nFACTS:\n${base.reply}`).catch(() => "");
     if (phrased) { english = phrased; engine = "gemini"; }
   }
   // Company and event names stay exactly as they are in every language.

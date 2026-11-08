@@ -6,7 +6,7 @@
 export const CRUSTDATA_BASE = process.env.CRUSTDATA_BASE_URL || "https://api.crustdata.com";
 const VERSION = "2025-11-01";
 
-export function hasCrustdata() { return !!process.env.CRUSTDATA_API_KEY; }
+export function hasCrustdata() { return !!connectorKey("crustdata"); }
 export function dataSource() { return hasCrustdata() ? "crustdata" : "manual"; }
 
 /** One trace entry per API call, so every agent decision can show what it looked at. */
@@ -30,7 +30,7 @@ function friendly(status: number, body: string) {
 
 /** POST (or GET when body is null) with a hard timeout and one retry on 429/5xx. */
 export async function cd<T = any>(path: string, body: any, trace?: Trace, ms = 45000): Promise<T> {
-  const key = process.env.CRUSTDATA_API_KEY;
+  const key = connectorKey("crustdata");
   if (!key) throw new Error("CRUSTDATA_API_KEY is not set (Vercel > Project > Settings > Environment Variables).");
   const t0 = Date.now();
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -197,4 +197,5 @@ export async function identifyCompanies(names: string[], trace?: Trace): Promise
     out.push({ query: String(row.matched_on || ""), id: Number(best.company_data.crustdata_company_id || b.crustdata_company_id), name: String(b.name || row.matched_on), domain: String(b.primary_domain || "").toLowerCase(), description: String(b.description || "").slice(0, 400), headcount_range: String(b.employee_count_range || "") });
   }
   return out;
-}
+}import { connectorKey } from "./connectors";
+

@@ -23,7 +23,7 @@ export function fixDashes(t: string) {
   return t.replace(/\s*[—―]\s*/g, ", ").replace(/(\d)\s*–\s*(\d)/g, "$1-$2").replace(/\s*[–‒]\s*/g, ", ").replace(/\s--\s/g, ", ");
 }
 
-export function lint(subject: string, body: string, sequence = "other", step = 0, postal = ""): string[] {
+export function lint(subject: string, body: string, sequence = "other", step = 0, postal = "", allowLinks: string[] = []): string[] {
   const p: string[] = [];
   subject = (subject || "").trim();
   const whole = subject + "\n" + body;
@@ -52,7 +52,9 @@ export function lint(subject: string, body: string, sequence = "other", step = 0
     else if (!sig.toLowerCase().includes(postal.toLowerCase())) p.push(`signature missing postal address ('${postal}')`);
     if (step === 0) {
       // The organiser's own deck link (/f/<long id>, chosen on the Draft page) is the one link a first email may carry.
-      if (URL_RE.test(main.replace(/https?:\/\/[^\s/]+\/f\/[A-Za-z0-9_-]{16,80}/g, ""))) p.push("link in first cold email body");
+      // A deck link from Canva, Slides or Drive set on the Draft page is allowed too (passed in as allowLinks).
+      const rest = allowLinks.reduce((b, l) => (l ? b.split(l).join("") : b), main.replace(/https?:\/\/[^\s/]+\/f\/[A-Za-z0-9_-]{16,80}/g, ""));
+      if (URL_RE.test(rest)) p.push("link in first cold email body");
       if (/attach(ed|ment)|please find/.test(low)) p.push("attachment mentioned in first cold email");
     }
   }

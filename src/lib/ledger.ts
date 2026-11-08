@@ -93,7 +93,7 @@ export async function queue(m: QueueInput): Promise<{ ok: boolean; reason?: stri
     if (other.length >= PARALLEL_COLD && st !== "NO_RESPONSE") return { ok: false, reason: "wave_full" };
     if (await humanReplyExists(m.company_id)) return { ok: false, reason: "company_already_replied" };
   }
-  const problems = lint(m.subject, m.body, m.sequence, m.step, await getSetting("postal", ""));
+  const problems = lint(m.subject, m.body, m.sequence, m.step, await getSetting("postal", ""), await deckLinks());
   if (problems.length) return { ok: false, reason: "lint", problems };
   const gate = m.sequence === "cold" && m.step >= 1 ? "auto" : "approve";
   const when = m.scheduled_for ? parseTime(m.scheduled_for).toISOString() : nowIso();
@@ -109,7 +109,7 @@ export async function editDraft(key: string, subject: string, body: string) {
   const d = await db();
   const m = (await d.q(`SELECT * FROM messages WHERE key=$1`, [key]))[0];
   if (!m || m.status !== "drafted") return { ok: false, reason: "not_drafted" };
-  const problems = lint(subject, body, m.sequence, num(m.step), await getSetting("postal", ""));
+  const problems = lint(subject, body, m.sequence, num(m.step), await getSetting("postal", ""), await deckLinks());
   if (problems.length) return { ok: false, reason: "lint", problems };
   await d.q(`UPDATE messages SET subject=$1, body=$2, body_hash=$3 WHERE key=$4`, [subject.trim(), body, await sha16(body), key]);
   return { ok: true };
@@ -354,4 +354,9 @@ export async function recordReply(r: { gmail_id: string; contact_id: string; com
   }
   await addException(r.company_id, "reply_on_live_deal", `${r.classification} while ${st}: ${r.summary}`);
   return "KEPT_STAGE";
+}
+
+/** The organiser's deck link (Canva, Slides, Drive), the one outside link a first email may carry. */
+async function deckLinks() {
+  try { const d = JSON.parse((await getSetting("outreach_deck", "")) || "null"); return d?.url ? [String(d.url)] : []; } catch { return []; }
 }

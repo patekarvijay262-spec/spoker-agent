@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { cn } from "cn";
 import {
-  Activity, Bot, Building2, CalendarClock, ClipboardPen, Handshake, Inbox, KanbanSquare, LayoutDashboard, LifeBuoy, LogOut, Megaphone, PenLine, Send, Settings, Users,
+  Activity, Bot, Building2, CalendarClock, ClipboardPen, Handshake, Inbox, KanbanSquare, LayoutDashboard, LifeBuoy, LogOut, Megaphone, PenLine, Plug, Send, Settings, Users,
 } from "lucide-react";
 
 import {
@@ -49,6 +49,7 @@ export function AppSidebar() {
       { title: "People", url: "/desk/people", icon: Users },
       { title: "Pipeline", url: "/desk/pipeline", icon: KanbanSquare },
       { title: "Agents", url: "/desk/agents", icon: Bot },
+      { title: "Connectors", url: "/desk/connectors", icon: Plug },
     ] },
   ];
   const isOn = (url: string) => (url === "/desk" ? path === "/desk" : path?.startsWith(url));

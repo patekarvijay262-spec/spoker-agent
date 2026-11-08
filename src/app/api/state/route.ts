@@ -1,4 +1,5 @@
 import { wrap } from "@/lib/http";
+import { connectorStatus, listTools } from "@/lib/connectors";
 import { db, gdb, getSetting, json } from "@/lib/db";
 import { getEvent } from "@/lib/flows";
 import { hasCrustdata, dataSource } from "@/lib/crustdata";
@@ -30,7 +31,7 @@ export const GET = wrap(async (req, user) => {
     settings: {
       approvers: people.filter((p) => !p.disabled && (p.role === "admin" || p.role === "approver")).map((p) => p.name).join(", "), postal: await getSetting("postal", ""),
       cap_new_per_day: await getSetting("cap_new_per_day", "30"), cap_total_per_day: await getSetting("cap_total_per_day", "60"), spacing_sec: await getSetting("spacing_sec", "60"),
-      gmail: await connectedEmail(), googleApp: hasGoogleApp(), crustdata: hasCrustdata(), voice: hasSarvam(), instagram: await instagramStatus(), source: dataSource(), engine: "Rules + Crustdata + Sarvam (optional)", permission: await getSetting("organiser_permission", ""), outreach_template: json(await getSetting("outreach_template", ""), null), outreach_deck: json(await getSetting("outreach_deck", ""), null), daily_reminder: (await getSetting("daily_reminder", "1")) !== "0",
+      gmail: await connectedEmail(), googleApp: hasGoogleApp(), crustdata: hasCrustdata(), voice: hasSarvam(), instagram: await instagramStatus(), source: dataSource(), engine: "Rules + Crustdata + Sarvam (optional)", permission: await getSetting("organiser_permission", ""), outreach_template: json(await getSetting("outreach_template", ""), null), outreach_deck: json(await getSetting("outreach_deck", ""), null), daily_reminder: (await getSetting("daily_reminder", "1")) !== "0", connectors: await connectorStatus(), tools: await listTools(),
     },
   };
 });

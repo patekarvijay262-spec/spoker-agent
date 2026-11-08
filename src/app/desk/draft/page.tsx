@@ -21,9 +21,10 @@ const PIECE = 3 * 1024 * 1024; // under Vercel's 4.5 MB request limit once base6
 
 /** Your deck (PPT, PPTX or PDF): uploaded once, then sent with every first email, attached or as a link. */
 function DeckBox() {
-  const { data, load, flash, can } = useDesk();
+  const { data, load, flash, can, act, busy } = useDesk();
   const deck = data.settings?.outreach_deck;
   const [pct, setPct] = useState<number | null>(null);
+  const [link, setLink] = useState("");
   const call = (body: Any) => api("/api/files", body);
   const upload = async (file: File) => {
     try {
@@ -48,7 +49,7 @@ function DeckBox() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <div className="text-sm font-medium">Your deck</div>
-          <div className="truncate text-xs text-muted-foreground">{deck ? <>📎 {deck.name} · {mb(deck.size)}</> : "PPT, PPTX or PDF, up to 15 MB. Sent with every first email."}</div>
+          <div className="truncate text-xs text-muted-foreground">{deck ? (deck.url ? <>🔗 {deck.name} · link in every first email</> : <>📎 {deck.name} · {mb(deck.size)}</>) : "PPT, PPTX or PDF up to 15 MB, or a Canva, Slides or Drive link. Sent with every first email."}</div>
         </div>
         {can("operator") && (
           <label className="inline-flex h-8 cursor-pointer items-center rounded-md border px-3 text-sm hover:bg-muted">
@@ -58,7 +59,14 @@ function DeckBox() {
         )}
       </div>
       {pct != null && <div className="h-1 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary transition-[width]" style={{ width: `${pct}%` }} /></div>}
-      {deck && can("operator") && (
+      {!deck && can("operator") && (
+        <form className="flex gap-2" onSubmit={(x) => { x.preventDefault(); act("deck_link", { url: link }, "Saving your deck link").then((r) => r && setLink("")); }}>
+          <Input value={link} onChange={(x) => setLink(x.target.value)} placeholder="Or paste a Canva, Google Slides or Drive link" aria-label="Deck link" inputMode="url" />
+          <Button type="submit" size="sm" variant="outline" disabled={!!busy || !link.trim().startsWith("https://")}>Use link</Button>
+        </form>
+      )}
+      {deck?.url && can("operator") && <button type="button" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => call({ op: "remove" }).then(load)}>Remove link</button>}
+      {deck && !deck.url && can("operator") && (
         <div className="flex flex-wrap items-center gap-3 text-xs">
           {(["attach", "link"] as const).map((m) => (
             <label key={m} className="inline-flex cursor-pointer items-center gap-1.5">

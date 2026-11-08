@@ -1,3 +1,4 @@
+import { loadConnectorKeys } from "@/lib/connectors";
 import { audit, isCron, requireUser, runAs } from "@/lib/auth";
 import { allWorkspaces, inWorkspace } from "@/lib/db";
 import { cycle } from "@/lib/flows";
@@ -12,7 +13,7 @@ export async function GET(req: Request) {
   const origin = new URL(req.url).origin;
   const results: Record<string, any> = {};
   for (const ws of await allWorkspaces()) {
-    try { results[ws] = await inWorkspace(ws, () => cycle(origin)); }
+    try { results[ws] = await inWorkspace(ws, async () => { await loadConnectorKeys().catch(() => {}); return cycle(origin); }); }
     catch (e: any) { results[ws] = { error: String(e?.message || e).slice(0, 200) }; }
   }
   return Response.json({ workspaces: Object.keys(results).length, results });
