@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 
 import { useDesk } from "./desk-provider";
-import { type Any, api, isDecision, lakh, OP_AGENT } from "./format";
+import { type Any, api, isDecision, OP_AGENT } from "./format";
 
 export function AppSidebar() {
   const path = usePathname();
@@ -49,12 +49,9 @@ export function AppSidebar() {
       { title: "People", url: "/desk/people", icon: Users },
       { title: "Pipeline", url: "/desk/pipeline", icon: KanbanSquare },
       { title: "Agents", url: "/desk/agents", icon: Bot },
-      { title: "Connectors", url: "/desk/connectors", icon: Plug },
     ] },
   ];
   const isOn = (url: string) => (url === "/desk" ? path === "/desk" : path?.startsWith(url));
-  const goal = Number(e?.goal_inr || 0);
-  const won = (data?.deals || []).reduce((s: number, d: Any) => s + Number(d.cash_inr || 0), 0);
 
   return (
     <Sidebar collapsible="icon" variant="sidebar">
@@ -95,12 +92,6 @@ export function AppSidebar() {
         ))}
       </SidebarContent>
       <SidebarFooter>
-        {goal > 0 && (
-          <div className="px-2 group-data-[collapsible=icon]:hidden">
-            <div className="flex justify-between text-xs text-sidebar-foreground/60"><span>{lakh(won)} signed</span><span>of {lakh(goal)}</span></div>
-            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-sidebar-border"><div className="h-full rounded-full bg-sidebar-foreground/70" style={{ width: `${Math.min(100, (won / goal) * 100)}%` }} /></div>
-          </div>
-        )}
         <SidebarMenu>
           {me?.owner && (
             <SidebarMenuItem>
@@ -109,6 +100,11 @@ export function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
+          <SidebarMenuItem>
+            <SidebarMenuButton isActive={isOn("/desk/connectors")} tooltip="Connectors" render={<Link href="/desk/connectors" />}>
+              <Plug /><span>Connectors</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem data-tour="help">
             <SidebarMenuButton isActive={isOn("/desk/help")} tooltip="Help" render={<Link href="/desk/help" />}>
               <LifeBuoy /><span>Help</span>
@@ -119,7 +115,7 @@ export function AppSidebar() {
               <Settings /><span>Settings</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          {me && <SidebarMenuItem>
+          {data?.me && <SidebarMenuItem>
             <SidebarMenuButton size="lg" tooltip="Sign out" onClick={() => api("/api/logout", {}).finally(() => { window.location.href = "/login"; })}>
               <div className="grid size-8 shrink-0 place-items-center rounded-full border border-sidebar-border bg-sidebar-accent text-xs font-medium">{String(me?.name || "?").slice(0, 1).toUpperCase()}</div>
               <div className="min-w-0 flex-1 leading-tight">
