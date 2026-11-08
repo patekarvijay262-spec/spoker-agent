@@ -42,17 +42,21 @@ const GLOSSARY: [RegExp, string][] = [
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9₹ ]+/g, " ").replace(/\s+/g, " ").trim();
 const inr = (n: number) => (n >= 1e7 ? `₹${+(n / 1e7).toFixed(2)} crore` : n >= 1e5 ? `₹${+(n / 1e5).toFixed(2)} lakh` : `₹${Math.round(n).toLocaleString("en-IN")}`);
 
+// Every query is a round trip to the database, so they all run at once.
 async function load() {
   const d = await db();
-  const ev = await d.q(`SELECT profile FROM events WHERE id='current'`);
-  const event = ev[0] ? json<any>(ev[0].profile, null) : null;
-  const companies = (await d.q(`SELECT * FROM companies`)).map((c: any) => ({ ...c, reasons: json<any>(c.reasons, {}) }));
-  const contacts = await d.q(`SELECT * FROM contacts WHERE status <> 'erased'`);
-  const messages = await d.q(`SELECT key, company_id, status, sequence, step, subject, to_email, created_at FROM messages`);
-  const exceptions = await d.q(`SELECT * FROM exceptions WHERE status='open' ORDER BY created_at DESC`);
-  const log = await d.q(`SELECT * FROM log ORDER BY ts DESC LIMIT 12`);
-  const deals = await d.q(`SELECT company_id, cash_inr, tier, status FROM deals`);
-  return { event, companies, contacts, messages, exceptions, log, deals, gmail: await getSetting("gmail_email", ""), permission: await getSetting("organiser_permission", "") };
+  const [ev, companies, contacts, messages, exceptions, log, deals, gmail, permission] = await Promise.all([
+    d.q(`SELECT profile FROM events WHERE id='current'`),
+    d.q(`SELECT * FROM companies`),
+    d.q(`SELECT * FROM contacts WHERE status <> 'erased'`),
+    d.q(`SELECT key, company_id, status, sequence, step, subject, to_email, created_at FROM messages`),
+    d.q(`SELECT * FROM exceptions WHERE status='open' ORDER BY created_at DESC`),
+    d.q(`SELECT * FROM log ORDER BY ts DESC LIMIT 12`),
+    d.q(`SELECT company_id, cash_inr, tier, status FROM deals`),
+    getSetting("gmail_email", ""),
+    getSetting("organiser_permission", ""),
+  ]);
+  return { event: ev[0] ? json<any>(ev[0].profile, null) : null, companies: companies.map((c: any) => ({ ...c, reasons: json<any>(c.reasons, {}) })), contacts, messages, exceptions, log, deals, gmail, permission };
 }
 type S = Awaited<ReturnType<typeof load>>;
 
@@ -130,8 +134,9 @@ function companyAnswer(s: S, c: any, q: string): AssistReply {
   return { reply, actions: drafts ? [...acts, { label: "Open Outbox", href: "/desk/outbox" }] : acts, suggestions: [`Who should I contact at ${name}?`, "Who should I pitch first?"], engine: "rules" };
 }
 
-export async function answer(message: string, _path = ""): Promise<AssistReply> {
-  const s = await load();
+/** `desk` lets one question read the desk once; it is passed in, never shared between requests. */
+export async function answer(message: string, _path = "", desk?: Promise<S>): Promise<AssistReply> {
+  const s = await (desk || load());
   const q = norm(message);
   const R = (reply: string, actions: AssistAction[] = [], suggestions: string[] = []): AssistReply => ({ reply, actions, suggestions: suggestions.length ? suggestions : defaultSuggestions(s), engine: "rules" });
   if (!q) return R("Ask me anything about the desk: what is going on, why a company was picked, or how to do something.");
@@ -268,16 +273,23 @@ export type Turn = { role: "user" | "assistant"; text: string };
  * rules cannot. `lang` is the language the question came in (voice detects it); `replyLang` is the language the user
  * picked for answers, if any. Facts stay the same; on any error the rule answer is used. */
 export async function assist(message: string, path = "", lang = "", replyLang = "", history: Turn[] = []): Promise<AssistReply> {
+  const t0 = Date.now(); const ms: Record<string, number> = {};
+  const lap = (k: string) => { ms[k] = Date.now() - t0; };
+  // Reading the desk and working out the language happen at the same time; the desk is read once per question.
+  const desk = load();
+  desk.catch(() => {});
   const q = await toEnglish(message, lang);
+  lap("language");
   const target = replyLang || q.lang;
   // Mirror how they write: Hinglish in, Hinglish out; Devanagari in, Devanagari out. A language picked in the menu
   // without typing in it gets its own script.
   const script = target === q.lang ? q.script : "native";
-  const base = await answer(q.text, path);
+  const base = await answer(q.text, path, desk);
+  lap("desk");
   let english = base.reply, engine: AssistReply["engine"] = "rules", suggestions = base.suggestions, actions = base.actions;
   const followUp = history.length > 0 && q.text.split(/\s+/).length <= 8 && /^(why|how|and|what about|then|so|ok|okay|tell me more|more|explain|example|really|which one|who else)\b/i.test(q.text.trim());
   if (message.length <= 800 && (base.unmatched || followUp)) {
-    const facts = statusAnswer(await load()).reply;
+    const facts = statusAnswer(await desk).reply;
     const hist = history.slice(-6).map((t) => `${t.role === "user" ? "User" : "Assistant"}: ${t.text.slice(0, 400)}`).join("\n");
     const r = await freeform(`DESK FACTS:\n${facts}\n\nHISTORY:\n${hist || "(none)"}\n\nUSER: ${q.text}`);
     if (r) {
@@ -290,10 +302,12 @@ export async function assist(message: string, path = "", lang = "", replyLang = 
     const phrased = await geminiPhrase(connectorKey("gemini"), `QUESTION: ${q.text}\n\nFACTS:\n${base.reply}`).catch(() => "");
     if (phrased) { english = phrased; engine = "gemini"; }
   }
+  lap("model");
   // Company and event names stay exactly as they are in every language.
-  const keep = target && !target.startsWith("en") ? await (async () => { const s = await load(); return [...s.companies.flatMap((c: any) => [c.name, brandOf(c)]), s.event?.name || "", String(s.event?.name || "").replace(/\s*20\d{2}$/, "")]; })() : [];
+  const keep = target && !target.startsWith("en") ? await (async () => { const s = await desk; return [...s.companies.flatMap((c: any) => [c.name, brandOf(c)]), s.event?.name || "", String(s.event?.name || "").replace(/\s*20\d{2}$/, "")]; })() : [];
   const reply = await fromEnglish(english, target, script, keep);
   // Suggestion chips go back in the same language and style, so a Hinglish user can tap them.
   const chips = target && !target.startsWith("en") ? await Promise.all(suggestions.map((s) => fromEnglish(s, target, script, keep))) : suggestions;
-  return { ...base, reply, actions, suggestions: chips, engine: reply !== english && engine === "rules" ? "sarvam" : engine, lang: target, script, unmatched: undefined };
+  lap("total");
+  return { ...base, reply, actions, suggestions: chips, engine: reply !== english && engine === "rules" ? "sarvam" : engine, lang: target, script, unmatched: undefined, ms } as AssistReply;
 }
