@@ -11,6 +11,7 @@ import { toEnglish } from "./sarvam";
 import { fillFor, fillTemplate, unknownTokens, type Template } from "./template";
 import { lint } from "./lint";
 import * as FL from "./files";
+import * as EU from "./event-update";
 
 export const FALLBACK_DECK = "/fallback/sponsorship-deck.pdf";
 export const FALLBACK_MOU = "/fallback/mou.pdf";
@@ -84,6 +85,40 @@ export async function runBrief(oneLine: string, sender: { name: string; title?: 
   await L.log("A0", null, "brief", `Researched "${r.profile.name}": ${r.searches} searches, ${r.verified} verified sources. Suggested floor INR ${r.profile.floor_inr}, waiting for lock.`);
   return { profile: r.profile };
 }
+/** The Event page's prompt bar: any change in plain words ("dates moved to 18 to 21 Dec, footfall 1.5 lakh, past
+ *  sponsors: Jio, L&T"). Known facts update their fields; anything else is kept as a note for the desk. */
+export async function updateEventFromText(text: string, who: string) {
+  const t = String(text || "").trim().slice(0, 4000);
+  if (!t) throw new Error("Type or say what changed.");
+  const e: any = await needEvent();
+  const u = EU.parseEventUpdate(t);
+  const changed: string[] = [];
+  if (u.dates) { e.dates = u.dates; const days = A.eventDays(u.dates); if (days) e.days = days; changed.push(`dates: ${u.dates}`); }
+  if (u.city) { e.city = u.city; changed.push(`city: ${u.city}`); }
+  if (u.reach) { e.reach = u.reach; e.audience_short = String(e.audience_short || "").replace(/^[\d,]+\s*/, `${u.reach.toLocaleString("en-IN")} `); changed.push(`footfall: ${u.reach.toLocaleString("en-IN")}`); }
+  if (u.goal_inr) { e.goal_inr = u.goal_inr; changed.push(`goal: ₹${(u.goal_inr / 1e5).toLocaleString("en-IN")} lakh`); }
+  if (u.postal_address) { e.postal_address = u.postal_address; changed.push("postal address"); }
+  if (u.past.length) {
+    const clean = u.past.map((n) => PS.cleanSponsorName(n) || n);
+    e.past_sponsor_list = PS.mergeSponsors([...(e.past_sponsor_list || []), ...clean.map((name) => ({ name, source: "organiser" as const }))]);
+    e.past_sponsors = PS.describeSponsors(e.past_sponsor_list);
+    changed.push(`${clean.length} past ${clean.length === 1 ? "sponsor" : "sponsors"}`);
+  }
+  if (u.brands.length) { e.wanted_brands = [...new Set([...(e.wanted_brands || []), ...u.brands])].slice(0, 25); changed.push(`${u.brands.length} wanted ${u.brands.length === 1 ? "brand" : "brands"}`); }
+  if (u.notes.length) { e.notes = [...(e.notes || []), ...u.notes.map((n) => n.slice(0, 400))].slice(-20); changed.push(`${u.notes.length} ${u.notes.length === 1 ? "note" : "notes"}`); }
+  await saveEvent(e);
+  await L.log(who, null, "event_update", `Updated the event: ${changed.join("; ")}`);
+  return { ok: true, changed };
+}
+export async function removeEventNote(i: number, who: string) {
+  const e: any = await needEvent();
+  if (!Array.isArray(e.notes) || !e.notes[i]) return { ok: true };
+  e.notes.splice(i, 1);
+  await saveEvent(e);
+  await L.log(who, null, "event_update", "Removed a note");
+  return { ok: true };
+}
+
 /** Add or change the website, Instagram handle or known past sponsors after the brief, and look again. */
 /** Names the organiser types in: added straight to the list, no website or web search needed. */
 export async function addPastSponsors(names: string[], who: string) {

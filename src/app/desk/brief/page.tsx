@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/desk/bits";
 import { BriefComposer } from "@/components/desk/brief-composer";
-import { ConnectorStrip, MicButton } from "@/components/desk/composer-tools";
+import { ConnectorStrip, MicButton, PromptBar } from "@/components/desk/composer-tools";
 import { useDesk } from "@/components/desk/desk-provider";
 import { type Any, api, host, inr, lakh } from "@/components/desk/format";
 import { SPONSOR_CATEGORIES } from "@/lib/sponsor-categories";
@@ -261,6 +261,35 @@ function Sources() {
   );
 }
 
+/** The Claude-style prompt bar: say any change in plain words, by typing, speaking or adding a file. */
+function TellTheDesk() {
+  const { data, act, busy, can, flash } = useDesk();
+  const notes: string[] = data.event.notes || [];
+  if (!can("operator")) return null;
+  return (
+    <div className="space-y-2">
+      <PromptBar tour="event-prompt" busy={busy?.op === "event_text"}
+        placeholder="Tell the desk anything: new dates, footfall, goal, past sponsors, brands you want…"
+        hint="Type, speak, or add a file"
+        onSubmit={async (text) => {
+          const r = await act("event_text", { text }, "Updating your event");
+          if (r?.changed?.length) flash("Event updated", r.changed.join(", "), "success");
+          return !!r;
+        }} />
+      {notes.length > 0 && (
+        <ul className="flex flex-wrap gap-1.5">
+          {notes.map((n, i) => (
+            <li key={i} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs">
+              <span className="truncate" title={n}>{n}</span>
+              <button type="button" aria-label="Remove this note" className="text-muted-foreground hover:text-foreground" onClick={() => act("event_note_remove", { index: i }, "Removing the note")}><X className="size-3" /></button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function BriefPage() {
   const { data } = useDesk();
   const e = data.event;
@@ -278,8 +307,9 @@ export default function BriefPage() {
   return (
     <>
       <PageHeader title={e.name} description={e.one_line}>
-        <Button variant="outline" onClick={() => setRedo(true)}>New brief</Button>
+        <Button variant="outline" size="sm" onClick={() => setRedo(true)}>New brief</Button>
       </PageHeader>
+      <TellTheDesk />
       <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
         <Tiers />
         <Details />

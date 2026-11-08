@@ -78,10 +78,10 @@ export function BriefComposer({ onDone, initial = "" }: { onDone?: () => void; i
   return (
     <div className="space-y-3">
       {/* The event, the way you would tell a sponsor. Type, speak, or add files. */}
-      <div className="rounded-2xl border bg-card shadow-sm transition focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/20" data-tour="composer">
+      <div className="rounded-[1.25rem] border bg-card shadow-[0_0.25rem_1.25rem_-0.5rem_rgb(0_0_0/0.12)] transition focus-within:border-foreground/25" data-tour="composer">
         <textarea ref={area} value={text} onChange={(e) => setText(e.target.value)} rows={4} aria-label="Describe your event"
           placeholder="Tell the desk about your event: name and year, organiser, dates, city, footfall, who attends, goal in ₹, postal address with PIN"
-          className="block max-h-80 min-h-28 w-full resize-y rounded-t-2xl bg-transparent px-4 pt-3.5 pb-1 text-[0.9375rem] leading-relaxed outline-none placeholder:text-muted-foreground" />
+          className="block max-h-80 min-h-28 w-full resize-y rounded-t-[1.25rem] bg-transparent px-4 pt-3.5 pb-1 text-[0.9375rem] leading-relaxed outline-none placeholder:text-muted-foreground" />
         <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
           <PlusMenu onText={append} />
           <MicButton onText={append} />

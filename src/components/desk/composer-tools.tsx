@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import { cn } from "cn";
-import { ChevronRight, FolderOpen, Mic, Paperclip, Plug, Plus, Settings2 } from "lucide-react";
+import { ArrowUp, ChevronRight, FolderOpen, Mic, Paperclip, Plug, Plus, Settings2 } from "lucide-react";
 
 import { useDesk } from "./desk-provider";
 import { type Any, api } from "./format";
@@ -156,6 +156,33 @@ export function PlusMenu({ onText, className }: { onText: (t: string) => void; c
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/** A prompt box like Claude's: grows as you type, + and mic at the bottom left, a round send arrow at the right.
+ *  Enter sends, Shift+Enter adds a line. `onSubmit` returns true to clear the box. */
+export function PromptBar({ placeholder, onSubmit, busy, tour, hint }: { placeholder: string; onSubmit: (text: string) => Promise<boolean | void>; busy?: boolean; tour?: string; hint?: React.ReactNode }) {
+  const [text, setText] = useState("");
+  const area = useRef<HTMLTextAreaElement>(null);
+  const append = (t: string) => { if (t) setText((cur) => { const c = cur.trimEnd(); return c ? `${c}${/[.,\n]$/.test(c) ? " " : ", "}${t}` : t; }); };
+  useEffect(() => { const el = area.current; if (!el) return; el.style.height = "auto"; el.style.height = `${Math.min(el.scrollHeight, 240)}px`; }, [text]);
+  const send = async () => { const t = text.trim(); if (!t || busy) return; const ok = await onSubmit(t); if (ok !== false) setText(""); };
+  return (
+    <div className="rounded-[1.25rem] border bg-card shadow-[0_0.25rem_1.25rem_-0.5rem_rgb(0_0_0/0.12)] transition focus-within:border-foreground/25" data-tour={tour}>
+      <textarea ref={area} value={text} rows={1} onChange={(e) => setText(e.target.value)} aria-label={placeholder}
+        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+        placeholder={placeholder}
+        className="block max-h-60 min-h-12 w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-[0.9375rem] leading-relaxed outline-none placeholder:text-muted-foreground/80" />
+      <div className="flex items-center gap-0.5 px-2 pb-2">
+        <PlusMenu onText={append} />
+        <MicButton onText={append} />
+        {hint && <span className="ml-1.5 hidden min-w-0 truncate text-xs text-muted-foreground sm:inline">{hint}</span>}
+        <button type="button" onClick={send} disabled={!text.trim() || busy} aria-label="Send"
+          className="ml-auto grid size-8 place-items-center rounded-full bg-foreground text-background transition disabled:opacity-25">
+          {busy ? <span className="size-3 animate-spin rounded-full border-2 border-background border-t-transparent" /> : <ArrowUp className="size-4" />}
+        </button>
+      </div>
     </div>
   );
 }

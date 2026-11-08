@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 // Minimum role per operation. Approver identity always comes from the signed-in user, never from the request body.
 const ROLE: Record<string, Role> = {
-  brief: "operator", prefs: "operator", past_sponsors: "operator", instagram_disconnect: "operator", discover: "operator", analyze: "operator", add_company: "operator", set_email: "operator", rediscover: "operator",
+  brief: "operator", event_text: "operator", event_note_remove: "operator", prefs: "operator", past_sponsors: "operator", instagram_disconnect: "operator", discover: "operator", analyze: "operator", add_company: "operator", set_email: "operator", rediscover: "operator",
   edit: "operator", simulate: "operator", schedule: "operator", deck: "operator", gemini_notes: "operator", notes: "operator",
   mou: "operator", send_mou: "operator", nurture: "operator", replies: "operator", reconcile: "operator", contact_reviewed: "operator", set_primary: "operator", prepare_outreach: "operator",
   lock_floor: "approver", approve: "approver", approve_many: "approver", reject: "approver", send: "approver", resolve: "approver",
@@ -72,6 +72,8 @@ async function run(b: any, me: User, origin: string) {
     }
     case "tool_remove": return CN.removeTool(String(b.id || ""));
     case "deck_link": return FL.setDeckLink(String(b.url || ""), String(b.name || ""));
+    case "event_text": return F.updateEventFromText(String(b.text || ""), who);
+    case "event_note_remove": return F.removeEventNote(Number(b.index), who);
     case "add_past_sponsors": return F.addPastSponsors((Array.isArray(b.names) ? b.names : []).map(String), who);
     case "save_template": return F.saveTemplate({ subject: String(b.subject || ""), body: String(b.body || "") }, who, !!b.apply);
     case "lock_floor": {
