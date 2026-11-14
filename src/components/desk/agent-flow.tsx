@@ -6,7 +6,7 @@ import { cn } from "cn";
 import { ArrowRight, BadgeCheck, Box, CalendarClock, FileSignature, Hand, Loader2, Mail, Megaphone, MessageSquareReply, Presentation, Radar, Scale } from "lucide-react";
 
 import { useDesk } from "./desk-provider";
-import { type Any, ago, AGENTS, humanLog, lakh, OP_AGENT } from "./format";
+import { type Any, ago, AGENTS, humanLog, lakh, OP_AGENT, STAGES } from "./format";
 
 const ICON: Record<string, Any> = { A0: Box, A1: Radar, A2: MessageSquareReply, A3: CalendarClock, A4: Presentation, A5: Scale, A6: FileSignature, A7: Megaphone, Email: Mail };
 type Status = "working" | "needs" | "done" | "idle";
@@ -83,42 +83,52 @@ export function AgentCard({ a, compact }: { a: AgentState; compact?: boolean }) 
   );
 }
 
-function Connector({ active }: { active: boolean }) {
-  return (
-    <div aria-hidden className="hidden items-center px-1 lg:flex">
-      <div className={cn("h-px w-4", active ? "animate-flow" : "bg-border")} />
-    </div>
-  );
-}
+const DOT: Record<Status, string> = { working: "animate-pulse bg-foreground", needs: "bg-warning", done: "bg-success", idle: "bg-muted-foreground/30" };
 
+/** Max's four stages side by side. Each stage lists every job in it, with what it has done and what needs you. */
 export function AgentFlow({ compact }: { compact?: boolean }) {
   const states = useAgentStates();
-  const lane = (ids: string[], title: string, sub: string) => {
-    const items = ids.map((id) => states.find((s) => s.id === id)!);
-    return (
-      <div className="space-y-2">
-        <div className="flex items-baseline gap-2"><span className="text-sm font-medium">{title}</span><span className="text-xs text-muted-foreground">{sub}</span></div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:flex lg:items-stretch lg:gap-0">
-          {items.map((a, i) => (
-            <div key={a.id} className="contents lg:flex lg:min-w-0 lg:flex-1 lg:items-stretch">
-              <div className="min-w-0 lg:flex-1"><AgentCard a={a} compact={compact} /></div>
-              {i < items.length - 1 && <Connector active={a.status === "working" || items[i + 1].status === "working"} />}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-  const hub = states.find((s) => s.id === "Email")!;
   return (
-    <div className="space-y-5">
-      {lane(["A0", "A1", "A2", "A3"], "Win the deal", "brief → sponsors → offer → meeting")}
-      {lane(["A4", "A5", "A6", "A7"], "Close and keep", "deck → negotiate → MOU → updates")}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-4 text-sm">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {STAGES.map((st) => {
+        const jobs = st.agents.map((id) => states.find((s) => s.id === id)!).filter(Boolean);
+        const status: Status = jobs.some((j) => j.status === "working") ? "working" : jobs.some((j) => j.status === "needs") ? "needs" : jobs.some((j) => j.status === "done") ? "done" : "idle";
+        const needs = jobs.reduce((n, j) => n + (j.status === "needs" ? j.needs : 0), 0);
+        return (
+          <section key={st.id} className={cn("flex min-w-0 flex-col rounded-2xl border bg-card", status === "working" && "border-foreground/40", status === "needs" && "border-warning/50")}>
+            <header className="flex items-center gap-2.5 border-b px-3.5 py-3">
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-foreground text-xs font-bold text-background num">{st.n}</span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 font-bold tracking-tight">{st.name}{status === "working" && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}</div>
+                <div className="truncate text-xs text-muted-foreground">{st.verb}</div>
+              </div>
+              {needs > 0 && <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[0.6875rem] font-semibold text-warning num">{needs} for you</span>}
+            </header>
+            <ul className="flex-1 divide-y">
+              {jobs.map((j) => {
+                const Icon = ICON[j.id];
+                return (
+                  <li key={j.id} className="px-3.5 py-2.5">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+                      <span className="font-medium">{j.name}</span>
+                      <span className={cn("ml-auto size-1.5 shrink-0 rounded-full", DOT[j.status])} title={TONE[j.status].label} />
+                    </div>
+                    <div className="mt-0.5 pl-5.5 text-xs text-muted-foreground num">{j.metric}</div>
+                    {!compact && j.status === "needs" && j.cta && (
+                      <Link href={j.cta.href} className="mt-1 ml-5.5 inline-flex items-center gap-1 text-xs font-semibold hover:underline"><Hand className="size-3" />{j.cta.label}<ArrowRight className="size-3" /></Link>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            <Link href={st.href} className="flex items-center justify-between border-t px-3.5 py-2 text-xs text-muted-foreground transition hover:bg-muted/50 hover:text-foreground">Open {st.name.toLowerCase()}<ArrowRight className="size-3.5" /></Link>
+          </section>
+        );
+      })}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm sm:col-span-2 xl:col-span-4">
         <BadgeCheck className="size-4 text-success" />
-        <span className="text-muted-foreground">Every email waits for a named approver and is sent once.</span>
-        <span className="num">{hub.metric}</span>
-        <Link href="/desk/outbox" className="ml-auto text-muted-foreground hover:text-foreground hover:underline">Outbox</Link>
+        <span className="text-muted-foreground">Every email waits for your yes and is sent once.</span>
       </div>
     </div>
   );

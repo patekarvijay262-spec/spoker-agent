@@ -42,6 +42,25 @@ const lakh = (n: number) => {
 };
 export const inrText = lakh;
 const roundTo = (n: number, step: number) => Math.max(step, Math.round(n / step) * step);
+
+/** The four tiers from the Title price: Platinum half, Gold a quarter, Silver a tenth. */
+export function ladder(title: number): Tier[] {
+  return [
+    { name: "Title", price_inr: title, deliverables: `"<Sponsor> presents" naming, main stage branding, 2 sessions or activations, logo on all media, 8 social posts, booth, post-event report` },
+    { name: "Platinum", price_inr: roundTo(title * 0.5, 10000), deliverables: "Stage branding, 1 session or workshop, booth, logo on media, 5 social posts, post-event report" },
+    { name: "Gold", price_inr: roundTo(title * 0.25, 10000), deliverables: "Booth or activation zone, logo on website and posters, 3 social posts, report" },
+    { name: "Silver", price_inr: roundTo(title * 0.1, 5000), deliverables: "Logo on website and posters, 1 social post, product or flyer in attendee kits" },
+  ];
+}
+/** Suggested lowest price: a little under Silver. */
+export const floorFor = (tiers: Tier[]) => roundTo(Math.min(...tiers.map((t) => t.price_inr)) * 0.8, 5000);
+/** Title price for a new size or budget. A goal sizes the ladder so 1 Title, 2 Platinum, 4 Gold and 6 Silver
+ *  (3.6 x Title) reach it; otherwise the old Title scales with the audience. */
+export function retitle(oldTitle: number, oldReach: number, reach: number, goal: number) {
+  if (goal > 0) return clamp(roundTo(goal / 3.6, 50000), 100000, 20000000);
+  if (oldReach > 0 && reach > 0 && oldTitle > 0) return clamp(roundTo(oldTitle * (reach / oldReach), 50000), 100000, 20000000);
+  return oldTitle;
+}
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 const daysAgo = (d?: string | null) => { const t = d ? new Date(d).getTime() : NaN; return isNaN(t) ? Infinity : (Date.now() - t) / 86400e3; };
 const monthYear = (d?: string | null) => { const t = d ? new Date(d) : null; return t && !isNaN(t.getTime()) ? t.toLocaleString("en-IN", { month: "long", year: "numeric" }) : ""; };
@@ -250,13 +269,8 @@ export async function buildBrief(oneLine: string, sender: { name: string; title?
   const reachTitle = clamp(roundTo(R * 40 * TYPE_PRICE[type] * instMult, 50000), 150000, 7500000);
   // With a goal, size the ladder so a realistic mix (1 Title, 2 Platinum, 4 Gold, 6 Silver = 3.6 x Title) reaches it.
   const title = goal ? clamp(roundTo(goal / 3.6, 50000), 100000, 20000000) : reachTitle;
-  const tiers: Tier[] = [
-    { name: "Title", price_inr: title, deliverables: `"<Sponsor> presents" naming, main stage branding, 2 sessions or activations, logo on all media, 8 social posts, booth, post-event report` },
-    { name: "Platinum", price_inr: roundTo(title * 0.5, 10000), deliverables: "Stage branding, 1 session or workshop, booth, logo on media, 5 social posts, post-event report" },
-    { name: "Gold", price_inr: roundTo(title * 0.25, 10000), deliverables: "Booth or activation zone, logo on website and posters, 3 social posts, report" },
-    { name: "Silver", price_inr: roundTo(title * 0.1, 5000), deliverables: "Logo on website and posters, 1 social post, product or flyer in attendee kits" },
-  ];
-  const floor = roundTo(tiers[3].price_inr * 0.8, 5000);
+  const tiers = ladder(title);
+  const floor = floorFor(tiers);
 
   const proof = relevant.flatMap((h) => {
     const t = `${h.title}. ${h.snippet}`; const yr = t.match(/\b(20\d{2})\b/)?.[1];

@@ -1,16 +1,15 @@
 "use client";
 
-import { useState } from "react";
-
 import Link from "next/link";
 
-import { ArrowRight, Building2, ClipboardPen, PenLine, Send } from "lucide-react";
+import { ArrowRight, Building2, ClipboardPen, Handshake, PenLine, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { MaxFace } from "@/components/desk/assistant";
 import { useDesk } from "@/components/desk/desk-provider";
+import { WatchButton } from "@/components/explainer";
 import { todayItems } from "@/lib/today-items";
-import { actorName, type Any, ago, brandName, clock, humanLog, isDecision, isHuman, visibleLog } from "@/components/desk/format";
+import { actorName, type Any, ago, brandName, clock, humanLog, isDecision, isHuman, lakh, visibleLog } from "@/components/desk/format";
 
 // Home: the organiser's four steps side by side. Each one says plainly where it stands and opens with one click;
 // none is locked behind another, so a team can start with whatever it already has.
@@ -54,6 +53,9 @@ function Welcome() {
 
 /** Today, in a few lines: what needs a yes, what goes out on its own, meetings and new replies. Nothing to
  * remember; the same list arrives by email each morning. */
+const greeting = () => { const h = Number(new Intl.DateTimeFormat("en-IN", { hour: "numeric", hour12: false, timeZone: "Asia/Kolkata" }).format(new Date())); return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; };
+const firstName = (n?: string) => String(n || "there").trim().split(/\s+/)[0];
+
 function Today() {
   const { data, act, can } = useDesk();
   const items = todayItems({ messages: data.messages || [], meetings: data.meetings || [], replies: data.replies || [], exceptions: data.exceptions || [], companies: data.companies || [] });
@@ -62,7 +64,10 @@ function Today() {
   return (
     <section className="rounded-2xl bg-foreground p-4 text-background md:p-5" data-tour="today">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-bold tracking-tight">Today</h2>
+        <div className="flex items-center gap-2.5">
+          <MaxFace className="size-9 shrink-0 rounded-full bg-background" />
+          <div><h2 className="text-lg leading-tight font-bold tracking-tight">{greeting()}, {firstName(data.me?.name)}</h2><p className="text-xs text-background/60">Here&apos;s my update for today.</p></div>
+        </div>
         {can("admin") && gmail && (
           <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-background/60">
             <input type="checkbox" checked={on} onChange={() => act("settings", { daily_reminder: !on }, "Saving")} />
@@ -76,15 +81,14 @@ function Today() {
             <li key={i.text}><Link href={i.href} className="group flex items-center gap-2.5 rounded-lg bg-background/10 px-3 py-2 text-sm transition hover:bg-background/15"><span className="size-1.5 shrink-0 rounded-full bg-[#f5a524]" /><span className="flex-1">{i.text}</span><ArrowRight className="size-3.5 opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-100" /></Link></li>
           ))}
         </ul>
-      ) : <p className="mt-2 text-sm text-background/70">Nothing needs you today. Follow-ups and reminders run on their own.</p>}
+      ) : <p className="mt-3 rounded-lg bg-background/10 px-3 py-2 text-sm text-background/80">Nothing needs you today. I&apos;m handling follow-ups and reminders.</p>}
       {!gmail && <p className="mt-3 text-xs text-background/50">Connect Gmail in Connectors to get this list by email every morning.</p>}
     </section>
   );
 }
 
 export default function Home() {
-  const { data, busy, progress, autopilot, can } = useDesk();
-  const [count, setCount] = useState(10);
+  const { data, busy, progress, openSearch, can } = useDesk();
   const e = data.event;
   if (!e) return <Welcome />;
   const cos: Any[] = data.companies.filter((c: Any) => c.stage !== "DISQUALIFIED");
@@ -95,12 +99,13 @@ export default function Home() {
   const sent = msgs.filter((m) => m.status === "sent").length;
   const approved = msgs.filter((m) => m.status === "approved").length;
   const replies = (data.replies || []).length + (data.exceptions || []).filter(isDecision).length;
-  const seatTotal = Object.entries(e.category_counts || {}).filter(([id]) => (e.sponsor_categories || []).includes(id)).reduce((s, [, n]) => s + (Number(n) || 0), 0);
   const past = (e.past_sponsor_list || []).length;
   const draft = data.settings?.outreach_template;
   const log = data.log.filter(visibleLog).slice(0, 5);
   const coName = (id: string) => brandName(data.companies.find((c: Any) => c.id === id) || { name: id });
   const running = !!busy || !!progress;
+  const meetings = (data.meetings || []).length, deals = (data.deals || []).length;
+  const won = (data.deals || []).reduce((t: number, d: Any) => t + Number(d.cash_inr || 0), 0);
 
   return (
     <>
@@ -109,11 +114,14 @@ export default function Home() {
           <h1 className="text-[1.625rem] leading-tight font-bold tracking-tight">{e.name}</h1>
           <p className="text-[0.8125rem] text-muted-foreground">{[e.organizer, e.dates, e.city].filter(Boolean).join(" · ")}</p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+        <WatchButton />
         <dl className="flex gap-1.5 text-center">
           {[["Companies", cos.length], ["Waiting", waiting], ["Sent", sent], ["Replies", replies]].map(([k, v]) => (
             <div key={k as string} className="min-w-16 rounded-lg border bg-card px-2.5 py-1.5"><dd className="text-lg leading-none font-semibold num">{v as number}</dd><dt className="mt-1 text-[0.6875rem] text-muted-foreground">{k as string}</dt></div>
           ))}
         </dl>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
@@ -134,28 +142,27 @@ export default function Home() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" data-tour="steps">
-        <StepCard n={1} title="Event" icon={ClipboardPen} href="/desk/brief"
-          status={<>{/to be confirmed/i.test(e.dates || "") ? "Dates not set yet" : e.dates}{past ? ` · ${past} past sponsors` : " · add past sponsors to set the level"}</>}>
-          <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/desk/brief" />}>Open</Button>
+        <StepCard n={1} title="Plan" icon={ClipboardPen} href="/desk/brief"
+          status={<>{/to be confirmed/i.test(e.dates || "") ? "Dates not set yet" : e.dates}{e.reach ? ` · ${Number(e.reach).toLocaleString("en-IN")} people` : ""}{e.goal_inr ? ` · raising ${lakh(e.goal_inr)}` : ""}{past ? ` · ${past} past sponsors` : ""}</>}>
+          <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/desk/brief" />}>Event</Button>
         </StepCard>
 
-        <StepCard tour="find" n={2} title="Companies" icon={Building2} href="/desk/companies"
-          status={cos.length ? `${cos.length} companies · ${withPeople} with verified people` : "None yet. Pick a number and the desk finds them, with people, emails and LinkedIn."}>
-          {seatTotal
-            ? <span className="text-sm text-muted-foreground">{seatTotal} by category</span>
-            : <Input type="number" inputMode="numeric" min={1} max={100} value={count || ""} onChange={(x) => setCount(Math.max(0, Math.min(100, Math.round(Number(x.target.value) || 0))))} aria-label="How many companies to find" className="h-8 w-20" />}
-          <Button size="sm" disabled={running || !can("operator") || (!seatTotal && !count)} onClick={() => autopilot(seatTotal || count)}>{progress ? "Finding…" : cos.length ? "Find more" : "Find companies"}</Button>
+        <StepCard tour="find" n={2} title="Find" icon={Building2} href="/desk/companies"
+          status={cos.length ? `${cos.length} companies · ${withPeople} with verified people` : "Tell me the size and budget, and I find sponsors with people, emails and LinkedIn."}>
+          <Button size="sm" disabled={running || !can("operator")} onClick={() => openSearch("more")}>{progress ? "Finding…" : cos.length ? "Find more" : "Find sponsors"}</Button>
           {cos.length > 0 && <Button size="sm" variant="ghost" nativeButton={false} render={<Link href="/desk/companies" />}>See them<ArrowRight /></Button>}
         </StepCard>
 
-        <StepCard n={3} title="Your draft" icon={PenLine} href="/desk/draft"
-          status={draft?.body ? "Written. Each email is fitted to the company and the person." : "Not written yet. Until you write one, the desk drafts its own."}>
-          <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/desk/draft" />}>{draft?.body ? "Edit" : "Write it"}</Button>
+        <StepCard n={3} title="Reach" icon={Send} href="/desk/outbox"
+          status={[draft?.body ? "Your draft is set" : "Write your draft once", waiting && `${waiting} waiting for your yes`, approved && `${approved} going out`, sent && `${sent} sent`, replies && `${replies} replies`].filter(Boolean).join(" · ")}>
+          <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/desk/draft" />}>{draft?.body ? "Draft" : "Write it"}</Button>
+          <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/desk/outbox" />}>Send</Button>
         </StepCard>
 
-        <StepCard n={4} title="Send" icon={Send} href="/desk/outbox"
-          status={waiting || approved || sent || replies ? [waiting && `${waiting} waiting for your yes`, approved && `${approved} approved, going out on schedule`, sent && `${sent} sent`, replies && `${replies} replies`].filter(Boolean).join(" · ") : "Nothing to send yet."}>
-          <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/desk/outbox" />}>Open</Button>
+        <StepCard n={4} title="Close" icon={Handshake} href="/desk/deals"
+          status={[meetings ? `${meetings} ${meetings === 1 ? "meeting" : "meetings"}` : "", deals ? `${deals} ${deals === 1 ? "MOU" : "MOUs"}` : "", won ? `${lakh(won)} signed` : ""].filter(Boolean).join(" · ") || "Meetings, MOUs and sponsor updates appear here after a yes."}>
+          <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/desk/meetings" />}>Meetings</Button>
+          <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/desk/deals" />}>Deals</Button>
         </StepCard>
       </div>
 

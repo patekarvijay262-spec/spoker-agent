@@ -40,7 +40,7 @@ function score(q: string, text: string) {
 
 export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
-  const { data, openCompany, ask, autopilot, setChatOpen, can } = useDesk();
+  const { data, openCompany, ask, openSearch, setChatOpen, can } = useDesk();
   const [q, setQ] = useState("");
   const [sel, setSel] = useState(0);
   const input = useRef<HTMLInputElement>(null);
@@ -60,7 +60,7 @@ export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => 
       ["Start the tour", go("/desk?tour=1"), "tour help learn guide walkthrough"],
       ["Ask Max a question", () => { onClose(); setChatOpen(true); }, "ask max chat question bot help"],
       ["Ask: what should I do next?", () => { onClose(); ask("What should I do next?"); }, "next todo what now"],
-      ...(can("operator") && !cos.length ? [["Find 10 companies now", () => { onClose(); autopilot(10); }, "find 10 sponsors"] as [string, () => void, string]] : []),
+      ...(can("operator") ? [["Find sponsors", () => { onClose(); openSearch("more"); }, "find sponsors search new companies"] as [string, () => void, string]] : []),
     ];
     for (const [label, run, words] of actions) all.push({ group: "Actions", icon: label.startsWith("Start the tour") ? Play : label.startsWith("Ask") ? MessageCircle : Zap, label, run, score: q ? score(q, `${label} ${words}`) : 1 });
     if (q.trim()) {
@@ -74,7 +74,7 @@ export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => 
     }
     // Best first inside each group, a few per group, groups in a fixed order.
     return GROUPS.flatMap((g) => all.filter((h) => h.group === g && h.score > 0).sort((a, b) => b.score - a.score).slice(0, g === "Actions" && q ? 3 : 6));
-  }, [q, data, onClose, router, openCompany, ask, autopilot, setChatOpen, can]);
+  }, [q, data, onClose, router, openCompany, ask, openSearch, setChatOpen, can]);
 
   useEffect(() => { setSel(0); }, [q]);
   if (!open) return null;

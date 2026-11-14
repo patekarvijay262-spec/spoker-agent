@@ -12,14 +12,14 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 import { useDesk } from "./desk-provider";
-import { type Any, AGENTS, brandName, OP_AGENT } from "./format";
+import { type Any, AGENTS, brandName, OP_AGENT, stageOf } from "./format";
 import { LayoutControls } from "./layout-controls";
 import { SearchDialog } from "./search";
 import { ThemeSwitcher } from "./theme-switcher";
 import { useVoiceControl, VOICE_EXAMPLES, VoiceButton } from "./voice-control";
 
 const PAGES = [
-  ["Home", "/desk"], ["Event", "/desk/brief"], ["Your draft", "/desk/draft"], ["Companies", "/desk/companies"], ["Pipeline", "/desk/pipeline"], ["Agents", "/desk/agents"],
+  ["Home", "/desk"], ["Event", "/desk/brief"], ["Your draft", "/desk/draft"], ["Companies", "/desk/companies"], ["Pipeline", "/desk/pipeline"], ["Max's work", "/desk/agents"],
   ["Send", "/desk/outbox"], ["Replies", "/desk/inbox"], ["People", "/desk/people"], ["Meetings", "/desk/meetings"], ["Deals and MOUs", "/desk/deals"],
   ["Sponsor updates", "/desk/sponsors"], ["Settings", "/desk/settings"], ["Help", "/desk/help"], ["Connectors", "/desk/connectors"],
 ];
@@ -60,7 +60,7 @@ export function DeskHeader() {
           {(busy || progress) && (
             <div className="mr-2 hidden items-center gap-2 text-xs text-muted-foreground md:flex" role="status" aria-live="polite" title={label}>
               <Loader2 className="size-3.5 animate-spin" />
-              <span className="max-w-56 truncate">{agent ? `${agent.name}: ` : ""}{label}</span>
+              <span className="max-w-64 truncate">{agent ? `Max · ${stageOf(agent.id)?.name || agent.name}: ` : ""}{label}</span>
               {progress && <span className="num">{progress.done + 1}/{progress.total}</span>}
             </div>
           )}

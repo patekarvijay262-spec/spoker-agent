@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { cn } from "cn";
 import {
-  Activity, Bot, Building2, CalendarClock, ClipboardPen, Handshake, Inbox, KanbanSquare, LayoutDashboard, LifeBuoy, LogOut, Megaphone, PenLine, Plug, Send, Settings, Users,
+  Activity, BookOpen, Bot, Building2, CalendarClock, ClipboardPen, Handshake, Inbox, KanbanSquare, LayoutDashboard, LifeBuoy, LogOut, Megaphone, PenLine, Plug, Send, Settings, Users,
 } from "lucide-react";
 
 import {
@@ -33,22 +33,26 @@ export function AppSidebar() {
     { items: [
       { title: "Home", url: "/desk", icon: LayoutDashboard },
     ] },
-    { label: "Your sponsorship", items: [
+    { label: "1 · Plan", items: [
       { title: "Event", url: "/desk/brief", icon: ClipboardPen },
+    ] },
+    { label: "2 · Find", items: [
       { title: "Companies", url: "/desk/companies", icon: Building2, live: !!live },
+      { title: "People", url: "/desk/people", icon: Users },
+    ] },
+    { label: "3 · Reach", items: [
       { title: "Your draft", url: "/desk/draft", icon: PenLine },
       { title: "Send", url: "/desk/outbox", icon: Send, badge: drafts },
       { title: "Replies", url: "/desk/inbox", icon: Inbox, badge: decisions },
     ] },
-    { label: "After a yes", items: [
+    { label: "4 · Close", items: [
       { title: "Meetings", url: "/desk/meetings", icon: CalendarClock },
       { title: "Deals and MOUs", url: "/desk/deals", icon: Handshake },
       { title: "Sponsor updates", url: "/desk/sponsors", icon: Megaphone },
     ] },
     { label: "More", items: [
-      { title: "People", url: "/desk/people", icon: Users },
+      { title: "Max's work", url: "/desk/agents", icon: Bot },
       { title: "Pipeline", url: "/desk/pipeline", icon: KanbanSquare },
-      { title: "Agents", url: "/desk/agents", icon: Bot },
     ] },
   ];
   const isOn = (url: string) => (url === "/desk" ? path === "/desk" : path?.startsWith(url));
@@ -103,6 +107,11 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton isActive={isOn("/desk/connectors")} tooltip="Connectors" render={<Link href="/desk/connectors" />}>
               <Plug /><span>Connectors</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton tooltip="Sponsorship guide" render={<Link href="/guide" target="_blank" />}>
+              <BookOpen /><span>Sponsorship guide</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem data-tour="help">

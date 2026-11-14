@@ -20,8 +20,8 @@ export default function AgentsPage() {
   const coName = (id: string) => brandName(data.companies.find((c: Any) => c.id === id) || { name: id });
   return (
     <>
-      <PageHeader title="Agents" description="They work on their own and stop only where a person must decide.">
-        <Button variant="outline" onClick={() => ask("What's going on?")}>Explain what's happening</Button>
+      <PageHeader title="Max's work" description="Your sponsorship employee works in four stages and stops only where you must decide.">
+        <Button variant="outline" size="sm" onClick={() => ask("What's going on?")}>Ask Max for an update</Button>
       </PageHeader>
       {needs.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -29,14 +29,14 @@ export default function AgentsPage() {
           {needs.map((s) => <Button key={s.id} size="sm" variant="outline" nativeButton={false} render={<a href={s.cta?.href} />}>{s.name} · {s.cta?.label}</Button>)}
         </div>
       )}
-      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-      <Panel><AgentFlow /></Panel>
+      <AgentFlow />
+      <div>
 
-      <Panel title="Activity" action={
+      <Panel title="Work log" action={
         <NativeSelect value={who} onChange={(e) => setWho(e.target.value)} aria-label="Filter activity" className="w-44">
           <NativeSelectOption value="all">Everyone</NativeSelectOption>
-          {AGENTS.map((a) => <NativeSelectOption key={a.id} value={a.id}>{a.name}</NativeSelectOption>)}
-          <NativeSelectOption value="you">People</NativeSelectOption>
+          {AGENTS.map((a) => <NativeSelectOption key={a.id} value={a.id}>Max · {a.name}</NativeSelectOption>)}
+          <NativeSelectOption value="you">You and your team</NativeSelectOption>
         </NativeSelect>
       }>
         <ol className="divide-y">

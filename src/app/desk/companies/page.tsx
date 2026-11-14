@@ -68,7 +68,7 @@ function matches(c: Any, q: string) {
 }
 
 export default function CompaniesPage() {
-  const { data, act, busy, progress, openCompany, can, findDifferent } = useDesk();
+  const { data, act, busy, progress, openCompany, can, openSearch } = useDesk();
   const params = useSearchParams();
   const [q, setQ] = useState(params.get("q") || "");
   useEffect(() => { const v = params.get("q"); if (v !== null) setQ(v); }, [params]);
@@ -94,9 +94,10 @@ export default function CompaniesPage() {
         <div className="flex flex-wrap gap-2" data-tour="companies-actions">
           {data.companies.some((c: Any) => ["PROSPECT", "QUALIFIED", "CONTACT_READY"].includes(c.stage)) && (
             <Button variant="outline" disabled={!!busy || !!progress || !can("operator")} title="Sets aside the ones you have not written to yet and finds the same number of new companies"
-              onClick={() => findDifferent()}><RefreshCw />Find different companies</Button>
+              onClick={() => openSearch("different")}><RefreshCw />Find different companies</Button>
           )}
           <Button variant={adding ? "secondary" : "outline"} onClick={() => setAdding(!adding)}><Plus />Add a company</Button>
+          <Button disabled={!!busy || !!progress || !can("operator")} onClick={() => openSearch("more")}><Search />Find sponsors</Button>
         </div>
       </PageHeader>
 

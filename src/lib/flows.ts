@@ -158,6 +158,33 @@ export async function setPrefs(prefs: BriefPrefs, who: string) {
   return { ok: true };
 }
 
+/** Every new sponsor search starts here: the size of the event, its budget, days and city, how many sponsors and of
+ *  which kinds. Prices follow the new size or budget unless the organiser locked the floor. */
+export async function setSearch(p: { reach?: number; days?: number; goal_inr?: number; city?: string; count?: number; categories?: string[]; counts?: Record<string, number>; people?: number }, who: string) {
+  const e: any = await needEvent();
+  const n = (v: any, lo: number, hi: number) => { const x = Math.round(Number(v)); return Number.isFinite(x) && x >= lo && x <= hi ? x : 0; };
+  const reach = n(p.reach, 20, 5000000), days = n(p.days, 1, 60), goal = n(p.goal_inr, 10000, 1000000000);
+  const changed: string[] = [];
+  const oldReach = Number(e.reach || 0), oldGoal = Number(e.goal_inr || 0);
+  if (reach && reach !== oldReach) { e.reach = reach; e.audience_short = String(e.audience_short || "").replace(/^[\d,]+\s*/, `${reach.toLocaleString("en-IN")} `); changed.push(`footfall ${reach.toLocaleString("en-IN")}`); }
+  if (days && days !== Number(e.days || 0)) { e.days = days; changed.push(`${days} ${days === 1 ? "day" : "days"}`); }
+  if (goal && goal !== oldGoal) { e.goal_inr = goal; changed.push(`budget goal ₹${(goal / 1e5).toLocaleString("en-IN")} lakh`); }
+  const city = String(p.city || "").replace(/[\r\n<>]/g, "").trim().slice(0, 60);
+  if (city && city !== e.city) { e.city = city; changed.push(city); }
+  if ((reach && reach !== oldReach) || (goal && goal !== oldGoal)) {
+    const title = A.retitle(Number(e.tiers?.[0]?.price_inr || 0), oldReach, Number(e.reach || 0), goal && goal !== oldGoal ? goal : 0);
+    if (title && title !== Number(e.tiers?.[0]?.price_inr || 0)) {
+      e.tiers = A.ladder(title);
+      if (!e.floor_locked) e.floor_inr = A.floorFor(e.tiers);
+      changed.push("prices re-sized");
+    }
+  }
+  Object.assign(e, cleanPrefs({ categories: p.categories ?? e.sponsor_categories, counts: p.counts ?? e.category_counts, people: p.people ?? e.contacts_per_company, brands: e.wanted_brands } as any));
+  await saveEvent(e);
+  await L.log(who || "manager", null, "search", `New sponsor search${changed.length ? `: ${changed.join(", ")}` : ""}`);
+  return { ok: true, changed, count: n(p.count, 1, 100) || null };
+}
+
 export async function lockFloor(floor: number, who: string) {
   const e = await needEvent();
   e.floor_inr = Number(floor) || e.floor_inr;

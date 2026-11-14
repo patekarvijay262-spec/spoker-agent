@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 // Minimum role per operation. Approver identity always comes from the signed-in user, never from the request body.
 const ROLE: Record<string, Role> = {
-  brief: "operator", event_text: "operator", event_note_remove: "operator", prefs: "operator", past_sponsors: "operator", instagram_disconnect: "operator", discover: "operator", analyze: "operator", add_company: "operator", set_email: "operator", rediscover: "operator",
+  brief: "operator", search: "operator", event_text: "operator", event_note_remove: "operator", prefs: "operator", past_sponsors: "operator", instagram_disconnect: "operator", discover: "operator", analyze: "operator", add_company: "operator", set_email: "operator", rediscover: "operator",
   edit: "operator", simulate: "operator", schedule: "operator", deck: "operator", gemini_notes: "operator", notes: "operator",
   mou: "operator", send_mou: "operator", nurture: "operator", replies: "operator", reconcile: "operator", contact_reviewed: "operator", set_primary: "operator", prepare_outreach: "operator",
   lock_floor: "approver", approve: "approver", approve_many: "approver", reject: "approver", send: "approver", resolve: "approver",
@@ -61,6 +61,7 @@ async function run(b: any, me: User, origin: string) {
     case "brief": return F.runBrief(String(b.line || ""), b.sender || {}, String(b.answers || ""), b.dry === true, b.prefs || undefined, b.links || undefined);
     case "past_sponsors": return F.refreshPastSponsors(b.links || {}, who);
     case "prefs": return F.setPrefs(b.prefs || {}, who);
+    case "search": return F.setSearch(b.search || {}, who);
     case "replace_companies": return F.replaceCompanies(who);
     // Connectors: a desk's own keys (encrypted) and any other tool the team uses.
     case "connector_save": return CN.saveConnectorKey(String(b.id || ""), String(b.key || ""));

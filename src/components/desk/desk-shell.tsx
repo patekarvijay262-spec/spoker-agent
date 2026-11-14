@@ -13,6 +13,7 @@ import { Assistant } from "./assistant";
 import { CompanySheet } from "./company-sheet";
 import { DeskHeader } from "./desk-header";
 import { DeskProvider, useDesk } from "./desk-provider";
+import { FindSponsorsDialog } from "./find-sponsors";
 import { api } from "./format";
 import { Tour } from "./tour";
 import { VoiceProvider } from "./voice-control";
@@ -63,6 +64,7 @@ export function DeskShell({ children }: { children: ReactNode }) {
             <Main>{children}</Main>
           </SidebarInset>
           <CompanySheet />
+          <FindSponsorsDialog />
           <Assistant />
         </VoiceProvider>
       </SidebarProvider>

@@ -101,7 +101,15 @@ export const visibleLog = (l: Any) => !["queue", "stage", "researching"].include
 export const money = (s?: string) => String(s || "").replace(/INR\s?/g, "₹").replace(/(\d)\s*lakh/gi, "$1L").replace(/(\d)\s*crore/gi, "$1Cr").replace(/\s+to\s+₹?/g, "–");
 
 /** Who did it, in words: the agent's name, never its code. */
-export const actorName = (a: string) => (isHuman(a) ? a : AGENTS.find((x) => x.id === a)?.name || "Desk");
+/** Max, the desk's employee, works in four stages. Every agent belongs to one, so nothing is skipped. */
+export const STAGES = [
+  { id: "plan", n: 1, name: "Plan", verb: "I price your event", agents: ["A0"], href: "/desk/brief" },
+  { id: "find", n: 2, name: "Find", verb: "I find sponsors and the people who decide", agents: ["A1"], href: "/desk/companies" },
+  { id: "reach", n: 3, name: "Reach", verb: "I write, you approve, I send and book calls", agents: ["A2", "Email", "A3"], href: "/desk/outbox" },
+  { id: "close", n: 4, name: "Close", verb: "I help you negotiate, sign and keep sponsors", agents: ["A4", "A5", "A6", "A7"], href: "/desk/deals" },
+] as const;
+export const stageOf = (agentId: string) => STAGES.find((s) => (s.agents as readonly string[]).includes(agentId));
+export const actorName = (a: string) => (isHuman(a) ? a : stageOf(a) ? `Max · ${stageOf(a)!.name}` : "Max");
 
 /** One agent log line as a short sentence a person would write. `full` keeps the original for a tooltip. */
 export function humanLog(l: Any): { text: string; full: string } {

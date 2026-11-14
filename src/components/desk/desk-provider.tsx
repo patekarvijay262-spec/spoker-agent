@@ -32,6 +32,9 @@ type Desk = {
   can: (r: "readonly" | "operator" | "approver" | "admin") => boolean;
   autopilot: (count: number) => Promise<void>;
   findDifferent: () => Promise<void>;
+  /** Every sponsor search opens a short form first (size, budget, days, how many): "more" adds, "different" replaces. */
+  searchMode: "" | "more" | "different";
+  openSearch: (mode: "more" | "different" | "") => void;
 };
 
 /** One short line when a major task finishes; small edits stay quiet. */
@@ -40,6 +43,7 @@ function doneMessage(op: string, r: Any): [string, string?] | null {
   switch (op) {
     case "brief": return r?.clarify ? null : ["Event packaged", "Prices and audience are ready. Find companies whenever you like."];
     case "prefs": return ["Preferences saved"];
+    case "search": return null;
     case "lock_floor": return ["Floor locked", "You can now find sponsors."];
     case "discover": return [`Found ${n(r?.added)} companies`, "Scoring them next."];
     case "analyze": return r?.dropped ? ["Company dropped", "It did not fit this event."] : [`Scored: ${r?.priority || "done"}`, r?.contact ? "Verified people found." : "No verified person yet."];
@@ -170,6 +174,7 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(t);
   }, [busy, progress]);
 
+  const [searchMode, setSearchMode] = useState<"" | "more" | "different">("");
   const me = data?.me || { role: "readonly" };
   const value = useMemo<Desk>(() => ({
     data, load, act, busy, progress, setProgress, flash, me,
@@ -178,8 +183,8 @@ export function DeskProvider({ children }: { children: ReactNode }) {
     chatOpen, setChatOpen,
     ask: (q, opts) => { setPendingVoice({ lang: opts?.lang || "", spoken: !!opts?.spoken }); setPending(q); setChatOpen(true); },
     pendingQuestion, pendingVoice, clearPending: () => setPending(""),
-    autopilot, findDifferent,
-  }), [data, load, act, busy, progress, flash, me, companyId, chatOpen, pendingQuestion, pendingVoice, autopilot, findDifferent]);
+    autopilot, findDifferent, searchMode, openSearch: setSearchMode,
+  }), [data, load, act, busy, progress, flash, me, companyId, chatOpen, pendingQuestion, pendingVoice, autopilot, findDifferent, searchMode]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
