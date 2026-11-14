@@ -347,3 +347,7 @@ html {
 @keyframes ex-fly { 0% { opacity: 0; transform: translateX(0) scale(.6); } 20% { opacity: 1; transform: translateX(40%) scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateX(430%) scale(.8); } }
 @keyframes ex-draw { from { stroke-dashoffset: 140; } to { stroke-dashoffset: 0; } }
 @media (prefers-reduced-motion: reduce) { [style*="ex-"] { animation-duration: 1ms !important; animation-delay: 0ms !important; } }
+@keyframes ex-shake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-2.5deg); } 75% { transform: rotate(2.5deg); } }
+@keyframes ex-cheer { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes ex-twinkle { 0%, 100% { transform: scale(.6); opacity: .5; } 50% { transform: scale(1.15); opacity: 1; } }
+@keyframes ex-drip { 0% { transform: translateY(0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(16px); opacity: 0; } }
