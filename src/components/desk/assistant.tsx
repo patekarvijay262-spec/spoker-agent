@@ -157,7 +157,7 @@ export function Assistant() {
             <div className="min-w-0 flex-1">
               <div className="font-semibold tracking-tight">Max</div>
               <div className="truncate text-xs text-muted-foreground">
-                {busy || progress ? `Working on ${(stageOf(agent?.id || "")?.name || "it").toLowerCase()}: ${(busy?.label || progress?.label || "").slice(0, 44)}` : "Your sponsorship employee · any language"}
+                {busy || progress ? `Working on ${(stageOf(agent?.id || "")?.name || "it").toLowerCase()}: ${(busy?.label || progress?.label || "").slice(0, 44)}` : "Ask anything, in any language"}
               </div>
             </div>
             <div className="relative">

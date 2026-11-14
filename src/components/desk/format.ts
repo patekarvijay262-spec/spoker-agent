@@ -101,7 +101,7 @@ export const visibleLog = (l: Any) => !["queue", "stage", "researching"].include
 export const money = (s?: string) => String(s || "").replace(/INR\s?/g, "₹").replace(/(\d)\s*lakh/gi, "$1L").replace(/(\d)\s*crore/gi, "$1Cr").replace(/\s+to\s+₹?/g, "–");
 
 /** Who did it, in words: the agent's name, never its code. */
-/** Max, the desk's employee, works in four stages. Every agent belongs to one, so nothing is skipped. */
+/** Max works in four stages. Every agent belongs to one, so nothing is skipped. */
 export const STAGES = [
   { id: "plan", n: 1, name: "Plan", verb: "I price your event", agents: ["A0"], href: "/desk/brief" },
   { id: "find", n: 2, name: "Find", verb: "I find sponsors and the people who decide", agents: ["A1"], href: "/desk/companies" },

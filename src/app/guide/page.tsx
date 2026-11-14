@@ -224,8 +224,8 @@ export default function Guide() {
         </section>
 
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-muted/60 p-5 print:hidden">
-          <div><div className="font-bold tracking-tight">Let Max do the heavy lifting</div><p className="text-sm text-muted-foreground">SponsorDesk prices your tiers, finds companies and decision makers, and writes to them for your approval.</p></div>
-          <Link href="/login" className="rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background">Start free</Link>
+          <div><div className="font-bold tracking-tight">Run your next season on SponsorDesk</div><p className="text-sm text-muted-foreground">SponsorDesk prices your tiers, finds companies and decision makers, and writes to them for your approval.</p></div>
+          <Link href="/login" className="rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background">Get started</Link>
         </div>
       </article>
     </main>

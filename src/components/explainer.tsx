@@ -18,7 +18,7 @@ export const SCENES = [
   { title: "2 · Find", say: "Max finds companies that fit, and the people who decide, with verified emails.", secs: 7 },
   { title: "3 · Reach", say: "Write your email once. Max fits it to everyone, and nothing goes out without your yes.", secs: 8.2 },
   { title: "4 · Close", say: "Replies, meetings and MOUs, all tracked, with one short list every morning.", secs: 7.5 },
-  { title: "SponsorDesk", say: "SponsorDesk. Your sponsorship employee.", secs: 5 },
+  { title: "SponsorDesk", say: "", secs: 4.5 }, // a quiet logo moment, no voice
 ] as const;
 
 const PINK = "#ff4f8b", VIOLET = "#7c4dff", AMBER = "#f5a524", MINT = "#2ecc9a", SKY = "#4aa8ff";
@@ -129,7 +129,6 @@ function Scene({ i }: { i: number }) {
       <Person mood="hopeful" className="top-[28%] left-[12%] w-[34%]" style={anim("ex-rise", 100, 600)} />
       <div className="absolute top-[34%] left-[56%] w-[20%]" style={anim("ex-pop", 700, 800)}><MaxFace className="max-bob w-full" /></div>
       <Bubble className="top-[24%] left-[70%]" style={anim("ex-pop", 1600)}>Hi! I&apos;ll take it from here.</Bubble>
-      <div className="absolute top-[68%] left-[50%] w-[32%] text-center text-[clamp(0.6rem,2.4cqw,1rem)] font-semibold text-[#141414]/70" style={anim("ex-rise", 2400)}>Your sponsorship employee</div>
     </>
   );
   if (i === 2) return (
@@ -216,7 +215,7 @@ function Scene({ i }: { i: number }) {
           <div className="w-[30%] pb-[8%]" style={anim("ex-pop", 450, 800)}><MaxFace className="w-full rounded-full bg-white" /></div>
         </div>
         <div className="text-[clamp(1.4rem,7.5cqw,3rem)] font-bold tracking-tight" style={anim("ex-rise", 500)}>SponsorDesk</div>
-        <div className="text-[clamp(0.8rem,3.0cqw,1.15rem)] opacity-85" style={anim("ex-rise", 900)}>Your sponsorship employee</div>
+        <div className="text-[clamp(0.8rem,3.0cqw,1.15rem)] opacity-85" style={anim("ex-rise", 900)}>Sponsorship, handled.</div>
         <div className="mt-[3%] text-[clamp(0.6rem,2.1cqw,0.85rem)] opacity-70" style={anim("ex-rise", 1300)}>spoker-agent-one.vercel.app</div>
       </div>
     </div>
@@ -237,7 +236,7 @@ export function Explainer({ onClose, startMuted = false }: { onClose?: () => voi
     if (timer.current) clearTimeout(timer.current);
     audio.current?.pause();
     if (!playing) return;
-    const a = new Audio(`/explainer/s${i}.mp3`);
+    const a = new Audio(SCENES[i].say ? `/explainer/s${i}.mp3` : "");
     a.muted = muted;
     audio.current = a;
     let fallback = true;
@@ -260,9 +259,9 @@ export function Explainer({ onClose, startMuted = false }: { onClose?: () => voi
     <div className="w-full">
       <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-[#fff7ec] [container-type:inline-size]" onClick={() => setPlaying((p) => !p)}>
         <div key={`${i}-${run}`} className="absolute inset-0">{<Scene i={i} />}</div>
-        <div className="absolute inset-x-[6%] bottom-[5%] text-center">
+        {SCENES[i].say && <div className="absolute inset-x-[6%] bottom-[5%] text-center">
           <span className="inline rounded-md bg-[#141414]/80 box-decoration-clone px-2 py-0.5 text-[clamp(0.5rem,2.1cqw,0.9rem)] leading-relaxed text-white">{SCENES[i].say}</span>
-        </div>
+        </div>}
         {!playing && <div className="absolute inset-0 grid place-items-center bg-black/10"><span className="grid size-14 place-items-center rounded-full bg-white/90 text-[#141414] shadow-lg"><Play className="ml-0.5 size-6" /></span></div>}
       </div>
       <div className="mt-2 flex items-center gap-1.5">

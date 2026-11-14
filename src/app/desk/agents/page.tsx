@@ -20,7 +20,7 @@ export default function AgentsPage() {
   const coName = (id: string) => brandName(data.companies.find((c: Any) => c.id === id) || { name: id });
   return (
     <>
-      <PageHeader title="Max's work" description="Your sponsorship employee works in four stages and stops only where you must decide.">
+      <PageHeader title="Max's work" description="Four stages. Max does the work and checks with you on what matters.">
         <Button variant="outline" size="sm" onClick={() => ask("What's going on?")}>Ask Max for an update</Button>
       </PageHeader>
       {needs.length > 0 && (
