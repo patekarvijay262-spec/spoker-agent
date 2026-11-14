@@ -12,13 +12,13 @@ import { MaxFace } from "./desk/assistant";
 // picture and voice stay in step; without the clips it runs on timers with captions.
 
 export const SCENES = [
-  { title: "Sponsorship season", say: "Sponsorship season. Hundreds of companies, a few weeks, and one question that keeps every organiser up at night: who will say yes?", secs: 8 },
-  { title: "Meet Max", say: "Meet Max, your sponsorship employee on SponsorDesk. Max does the heavy lifting, and checks with you before anything important.", secs: 7.5 },
-  { title: "1 · Plan", say: "First, tell Max about your event: how big it is, the budget you want to raise, and the dates. Max prices four sponsor tiers to match.", secs: 8 },
-  { title: "2 · Find", say: "Next, Max finds companies that fit your audience and have fresh budgets, along with the people who decide, with verified emails and LinkedIn.", secs: 8.5 },
-  { title: "3 · Reach", say: "Write your email once. Max fits it to every company and every person, and nothing goes out without your yes.", secs: 7.5 },
-  { title: "4 · Close", say: "Replies, meetings, MOUs and sponsor updates: Max keeps track of all of it, and sends you one short list every morning.", secs: 7.5 },
-  { title: "SponsorDesk", say: "SponsorDesk. Your sponsorship employee. Start your first search today.", secs: 5 },
+  { title: "Sponsorship season", say: "Sponsorship season. Hundreds of companies, a few weeks, and one big question: who will say yes?", secs: 7.5 },
+  { title: "Meet Max", say: "Meet Max, your sponsorship employee. Max does the heavy lifting and checks with you first.", secs: 7 },
+  { title: "1 · Plan", say: "Tell Max your event size, budget and dates. Max prices four sponsor tiers to match.", secs: 7 },
+  { title: "2 · Find", say: "Max finds companies that fit, and the people who decide, with verified emails.", secs: 6.5 },
+  { title: "3 · Reach", say: "Write your email once. Max fits it to everyone, and nothing goes out without your yes.", secs: 7 },
+  { title: "4 · Close", say: "Replies, meetings and MOUs, all tracked, with one short list every morning.", secs: 6.5 },
+  { title: "SponsorDesk", say: "SponsorDesk. Your sponsorship employee.", secs: 4 },
 ] as const;
 
 const PINK = "#ff4f8b", VIOLET = "#7c4dff", AMBER = "#f5a524", MINT = "#2ecc9a", SKY = "#4aa8ff";
